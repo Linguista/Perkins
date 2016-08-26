@@ -7,18 +7,19 @@ use utf8;                                       # Required to process Unicode te
 use Encode;                                     # Module for dealing with different text encodings, such as UTF-8.                    #
 use File::Slurp::Unicode;                       # Allows Unicode files to be slurped in. Required for final clean-up process          #
 use Getopt::Long qw(:config no_auto_abbrev);    # Module for processing command line options.                                         #
-use Lingua::ES::Numeros;                        # Module to convert numerals to Spanish text.                                        #
+use Lingua::ES::Numeros;                        # Module to convert numerals to Spanish text.                                         #
 
 # NOTE: Do NOT use 'strict' -- it produces incorrect output!
 
-my $version = "1.0.4";
+my $version = "1.0.5";
+# 10 July 2016
 
 #######################################################################################
-#                                        Perkins                                      #
-#                          Copyright (c) 2016 Scott Sadowsky                          #
+#                                       Perkins                                       #
+#                         Copyright (c) 2016 Scott Sadowsky                           #
 #                                                                                     #
-#                   http://sadowsky.cl - ssadowsky at gmail period com                #
-#            Licensed under the GNU General Public License, version 3 (GPLv3)         #
+#                 http://sadowsky.cl - ssadowsky at gmail period com                  #
+#    Licensed under the GNU Affero General Public License, version 3 (GNU AGPLv3)     #
 #                                                                                     #
 #                   For help, run the program with the -h switch.                     #
 #                                                                                     #
@@ -31,23 +32,27 @@ my $version = "1.0.4";
 # NOTE:   Input and config files MUST be ISO-8859-1 (Latin-1) text. Output (and       #
 #         optional debugging) files will be in UTF-8.                                 #
 #                                                                                     #
-# Known bug (as of 102): convert_backchannel_vocalizations produces t͡ʃ.̩ː (with      #
-#    spurious syllable dot).                                                          #
+# Known bug (as of 102): convert_backchannel_vocalizations produces t͡ʃ.̩ː (with       #
+#    spurious syllable dot). (Fixed as of 104?)                                       #
 #                                                                                     #
 #######################################################################################
 
 #################################################################################
+# Perkins, the Phonetician's Assistant.                                         #
+# Copyright (C) 2016 Scott Sadowsky                                             #
+# http://sadowsky.cl · s s a d o w s k y A T g m a i l D O T com                #
+#                                                                               #
 # This program is free software: you can redistribute it and/or modify          #
-# it under the terms of the GNU General Public License as published by          #
-# the Free Software Foundation, either version 3 of the License, or             #
+# it under the terms of the GNU Affero General Public License as published      #
+# by the Free Software Foundation, either version 3 of the License, or          #
 # (at your option) any later version.                                           #
 #                                                                               #
 # This program is distributed in the hope that it will be useful,               #
 # but WITHOUT ANY WARRANTY; without even the implied warranty of                #
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                 #
-# GNU General Public License for more details.                                  #
+# GNU Affero General Public License for more details.                           #
 #                                                                               #
-# You should have received a copy of the GNU General Public License             #
+# You should have received a copy of the GNU Affero General Public License      #
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.         #
 #################################################################################
 
@@ -64,9 +69,9 @@ our $debug            = 0;
 our $debug_syllab_sub = 0;
 our $debug_to_logfile = 0;
 our $silent_mode      = 0;
-our $batch_mode       = 0;    # Set to 1 for batch mode. This suppresses output to stdout, etc.
-my $use_config_file = 0;      # Choose whether or not to process the perkins.ini config file.
-my $lang            = "en";   # Default program message language
+our $batch_mode       = 0;       # Set to 1 for batch mode. This suppresses output to stdout, etc.
+my $use_config_file   = 0;       # Choose whether or not to process the perkins.ini config file.
+my $lang              = "en";    # Default program message language
 
 # META OPTIONS - FOR SPECIFIC COMBINATIONS OF VARIABLES
 our $corpus_running_text = 0;    # Select settings for the Coscach / Codicach: Running text syllabified at sentence
@@ -117,7 +122,7 @@ our $no_stress_marks     = 0;        # Don't include any type of stress indicati
 our $non_ipa_apostrophes = 0;        # Use the standard orthographic apostrophe (') instead of the IPA one (which doesn't show in Praat)
                                      # Added in 376
 
-# USER OPTIONS - SYLLABLES           #
+# USER OPTIONS - SYLLABLES            #
 our $insert_syllable_dots     = 1;    # Insert dots between each syllable
 our $split_at_syllables       = 0;    # Put a newline at each syllable break.
 our $syllabify_by_sentence    = 1;    # Syllabifies by sentence instead of by word. Means that "los hombres" > /lo.som.bres/
@@ -125,7 +130,7 @@ our $syllabify_by_sentence    = 1;    # Syllabifies by sentence instead of by wo
 our $syllable_dots_are_spaces = 0;    # Separate syllables with spaces instead of dots. Designed to facilitate processing
                                       # and research on syllables in the Codicach, etc. (lets syls be treated as words)
 
-# USER OPTIONS - PAUSES              #
+# USER OPTIONS - PAUSES               #
 our $ipa_pause_symbols    = 1;        # Use the IPA's | and ‖ method of representing pauses            #
 our $ipa_long_pause_two_singles = 0;  # For long IPA pauses, use two single pause bars (||) instead of one#
                                       # double bar (‖). This is useful b/c Praat can't show the double bar.#
@@ -169,10 +174,10 @@ our $name_for_v    = "becórta";      # Name for letter "v" to be used when spel
                                      # accented syl. and written as one word).                             #
 
 # USER OPTIONS - MISC                #
-our $keep_paragraphs       = 1;             # Keep paragraphs in the source text. Otherwise, output will be one big block. #
-our $vertical_output = 0;             # Output contains one word per line.                                           #
+our $keep_paragraphs          = 1;   # Keep paragraphs in the source text. Otherwise, output will be one big block. #
+our $vertical_output          = 0;   # Output contains one word per line.                                           #
 # NEW IN 104. TESTING!
-our $double_vowels_to_singles = 1;    # Reduce two identical vowels ("aa", "ee", "ii", etc.) to a single one.
+our $double_vowels_to_singles = 1;   # Reduce two identical vowels ("aa", "ee", "ii", etc.) to a single one.
 
 ###################################################
 #      OPTIONS THAT USERS MAY *NOT* CONFIGURE     #
@@ -215,6 +220,7 @@ else                      { $progname = "./perkins.pl" }
 ############################################################################
 my $accent                    = "";
 my $acute_consonants          = "(b|ʧ|d|ʤ|ʝ|f|g|j|k|l|m|ɲ|p|ɾ|r|ʂ|t|w|x|y|z)";
+my $acute_consonants_except_j = "(b|ʧ|d|ʤ|ʝ|f|g|k|l|m|ɲ|p|ɾ|r|ʂ|t|w|x|y|z)";
 my $all_consonants            = "(b|ʧ|d|ʤ|ʝ|f|g|j|k|l|m|ɲ|n|p|ɾ|r|s|ʂ|t|w|x|y|z)";
 my $all_consonants_but_glides = "(b|ʧ|d|ʤ|ʝ|f|g|k|l|m|ɲ|n|p|ɾ|r|s|ʂ|t|x|y|z)";
 my $non_liquids               = "(b|ʧ|d|ʤ|ʝ|f|g|j|k|m|ɲ|n|p|s|ʂ|t|w|x|y|z)";
@@ -666,10 +672,10 @@ while (<INPUTFILE>) {
                ##################################################################
                $word = modify_single_ortho_words($word);
                
-			############################################################################
-			# DANGER NEW in 104!                                                       #
-			#         PRE-PROCESSING: Convert double (or more) vowels to singles       #
-			############################################################################
+			######################################################################
+			# DANGER NEW in 104!                                                 #
+			#         PRE-PROCESSING: Convert double (or more) vowels to singles #
+			######################################################################
 			$word = &double_vowels_to_single_vowels($word);
 
                ##################################################################
@@ -682,12 +688,7 @@ while (<INPUTFILE>) {
                ##################################################################
                $word = fix_letter_patters($word);
                
-
-
                #print "PRECLEAN-ORTHO-AFT   :$word:\n";    # AD-HOC DEBUG
-
-          
-
 
           }
 
@@ -1472,7 +1473,7 @@ sub print_help {
           print STDOUT "\n -oye                   Represent the \"ye\" phoneme as /ʝ/ regardless of any other setting";
           print STDOUT "\n -ar                    Use the \"retracted\" diacritic in some affricates (e.g. t̠͡ʃ).";
           print STDOUT "\n -lig                   Use ligatures in /t͡ʃ/ and /d͡ʒ/. \'-nolig\' prevents their use.";
-          print STDOUNT "\n                         Must be used in conjunctin with the \'-mc\' switch!";
+          print STDOUT "\n                         Must be used in conjunctin with the \'-mc\' switch!";
           print STDOUT "\n -dd, --dent            Use dental diacritic with /t/ and /d/. Must use with \'-mc\'!";
           print STDOUT "\n -aeg                   Add epenthetic [g] before /w/ (e.g. <hueco> > [gweko].";
           print STDOUT "\n";
@@ -5135,14 +5136,36 @@ sub convert_graphemes_to_interm_phonemes {
      $current_item =~ s/c(i|í|e|é)/\{S\}$1/g;
      $current_item =~ s/c/\{K\}/g;
 
+     # TODO 105: Key line for fixing voseo accentuation
      # Grapheme <y> in general
      $current_item =~ s/y/\{J\}/g;
+     #print "\n$current_item";	# DEBUG
 
+     # NEW in 105: Key line for fixing voseo accentuation
+     # WARNING TESTING
+     # If there's a word-final grapheme "y", make the last vowel acute.
+	$current_item =~ s/i\{J\}$/íj/g; 
+	$current_item =~ s/e\{J\}$/éj/g;
+	$current_item =~ s/a\{J\}$/áj/g;
+	$current_item =~ s/o\{J\}$/ój/g;
+	$current_item =~ s/u\{J\}$/új/g;
+	
+	#print "\n$current_item";	# DEBUG
+	
+     
+     # NEW in 105: Key line for fixing voseo accentuation
+     # WARNING TESTING
+     # I disabled the following, as the preceding should take care of it.
+     #
+     #
      # Fix grapheme <y> at end of word, so it's /i/ (or /j/), and not /ʤ/
-     $current_item =~ s/\{J\}$/i/g;
-
+     #$current_item =~ s/\{J\}$/i/g;
+     #print "\n$current_item";	# DEBUG
+     
      # Fix the grapheme <y> when it's representing the preposition "y"
      $current_item =~ s/^\{J\}$/i/g;
+     # DEBUG
+	#print "\n$current_item";	# DEBUG
 
      return ($current_item);
 
@@ -5207,10 +5230,12 @@ sub process_diphthongs {
      $current_item =~ s/u(i|e|a|o|í|é|á|ó)/w$1/g;
 
      ############################################################################
-     # Add non-syllabic diacritic to diphthongs (now: approximante, not diacritic)
+     # Turn /i/ into /j/ in diphthongs
      $current_item =~ s/(a|e|a|o|u)i/$1j/g;
      $current_item =~ s/(a|e|a|o)u/$1w/g;
-
+	
+	#print "\n==> DIPHTHONG PROCESSED: $current_item"; # DEBUG 105
+	
      return ($current_item);
 
 }
@@ -5236,16 +5261,20 @@ sub stress_accent_routine {
 
      # Get the vowel characters and count them.
      $vowels = $current_item;
-
-     # Here is an odd but necessary mix of phonemes (b,d,ɾ) and graphemes (y,z).     #
-     # This line removes them.                                                       #
+     
+     # Here is an odd but necessary mix of phonemes (b,d,ɾ) and graphemes (y,z). #
+     # This line removes them to leave just vowels.                              #
      $vowels =~ s/(b|ʧ|d|ʤ|f|g|j|k|l|m|n|ɲ|p|ɾ|r|s|ʂ|t|w|x|y|z)//g;
+     
+     #print "\n$vowels";	# DEBUG
 
      $accent         = "";    # Reset this just in case.
      $last_vowel_pos = "";    # Reset this just in case.
 
      # Get the number of vowels in the word being analyzed.
      $vowel_count = length($vowels);
+     
+     #print "\nCurrent Item:\t$current_item\nVowels:\t\t$vowels ($vowel_count)\n";	# DEBUG 105
 
      ############################################################################
      #                   STRESS ACCENT ROUTINE - LOGIC AND ACTION               #
@@ -5253,8 +5282,8 @@ sub stress_accent_routine {
 
      ############################################################################
      # If word is monosyllabic, assign accent to its lone vowel                 #
-     # NOTE: The vowels of monosyllabic words should probably NOT get a tilde   #
-     #       (or, later, a stress mark ').                                      #
+     # NOTE: The vowels of monosyllabic words should NOT get a tilde (or,       #
+     #       later, a stress mark ').                                           #
      if ( $vowel_count == 1 ) {
           $accent = "monosyllabic";
 
@@ -5274,11 +5303,17 @@ sub stress_accent_routine {
      }
 
      ############################################################################
+     # DANGER Changed in 105                                                    #
+     # This, along with the other changes, finally fixed the accentuation error #
+     # that was affecting mainly Chilean voseo verb forms.                      #
+     #                                                                          #
      # If word ends in acute-izing consonant, stress is on last syllable        #
      ############################################################################
-     elsif ( $character[-1] =~ m/[$acute_consonants]/ ) {
-          $accent = "acute";
-
+     #elsif ( $character[-1] =~ m/[$acute_consonants]/ ) {
+     #     $accent = "acute";
+	elsif ( $character[-1] =~ m/[$acute_consonants_except_j]/ ) {
+           $accent = "acute";
+           
           #######################################################################
           # This is a rather complex way of figuring out the last vowel.        #
           #######################################################################
@@ -5328,6 +5363,8 @@ sub stress_accent_routine {
           $current_item = join( '', @character );
      }
 
+     #print "Accent: $accent\t$current_item\n";	# DEBUG
+     
      return ($current_item);
 
 }
@@ -6807,13 +6844,13 @@ sub print_info_header {
      if ( $lang eq "es" ) {
 
           print STDOUT "\n+-----------------------------------------------------------------------+";
-          print STDOUT "\n|                          Perkins v$version                             |";
+          print STDOUT "\n|                          Perkins v$version                               |";
           print STDOUT "\n|            Tu suche para el trabajo sucio de la fonética...           |";
           print STDOUT "\n|                   Copyright (c) 2016 Scott Sadowsky                   |";
           print STDOUT "\n|           http://sadowsky.cl - ssadowsky arro ba gma il pu nto com    |";
           print STDOUT "\n|                                                                       |";
-          print STDOUT "\n| Este programa se distribuye bajo la licencia GNU GPL v3. Se           |";
-          print STDOUT "\n| distribuye SIN GARANTÍA ALGUNA. Véase GPL.TXT para más detalles.      |";
+          print STDOUT "\n| Este programa se distribuye bajo la licencia GNU AGPL v3. Se          |";
+          print STDOUT "\n| distribuye SIN GARANTÍA ALGUNA. Véase LICENSE.txt para más detalles.  |";
           print STDOUT "\n|                                                                       |";
           print STDOUT "\n| PROBLEMA CONOCIDO: En todos los modos menos el fonémico, la           |";
           print STDOUT "\n|                    silabización se realiza siempre a nivel de palabra.|";
@@ -6834,13 +6871,13 @@ sub print_info_header {
      else {
 
           print STDOUT "\n+-----------------------------------------------------------------------+";
-          print STDOUT "\n|                           Perkins v$version                            |";
+          print STDOUT "\n|                           Perkins v$version                              |";
           print STDOUT "\n|                      The Phonetician's Assistant...                   |";
           print STDOUT "\n|                   Copyright (c) 2016 Scott Sadowsky                   |";
           print STDOUT "\n|           http://sadowsky.cl - ssadowsky a t gma il d ot com          |";
           print STDOUT "\n|                                                                       |";
-          print STDOUT "\n| This program is free software distributed under the GNU GPL v3. It    |";
-          print STDOUT "\n| comes with ABSOLUTELY NO WARRANTY. See GPL.TXT for details.           |";
+          print STDOUT "\n| This program is free software distributed under the GNU AGPL v3. It   |";
+          print STDOUT "\n| comes with ABSOLUTELY NO WARRANTY. See LICENSE.txt for details.       |";
           print STDOUT "\n|                                                                       |";
           print STDOUT "\n| KNOWN ISSUE: In all modes but phonemic, syllabification is            |";
           print STDOUT "\n|              always performed at word level.                          |";
@@ -6955,6 +6992,15 @@ sub assign_lang_str {
 #    such as "sd", "xd", "tour", etc.                                           #
 # *  Updated the online help to reflect the above options, as well as to high-  #
 #    light the -nosd (no syllable dots) option, which even *I* couldn't find!   #
+#                                                                               #
+# 1.0.5                                                                         #
+# * Fixed a long-standing bug that was probably implemented as a way            #
+#   to properly process incorrectly written but unambiguous words, such as      #
+#   "samurai" (which SHOULD be transcribed as /sa.'mu.ray/, or written as       #
+#   "samurái"). This affects maybe 0.00001% of non-Chilean Spanish words, but   #
+#   lays waste to many Chilean voseo conjugations -- any that end in ortho "i"! #
+#   (e.g. "estabai" becomes /es.ta.'baj/, "hubierai" is /u.bje.'raj/, etc.      #
+# * Changed license to the GNU Affero GPL v3.                                   #
 #                                                                               #
 #################################################################################
 
