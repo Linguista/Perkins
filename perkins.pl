@@ -11,8 +11,8 @@ use Lingua::ES::Numeros;                        # Module to convert numerals to 
 
 # NOTE: Do NOT use 'strict' -- it produces incorrect output!
 
-my $version = "1.0.5";
-# 10 July 2016
+my $version = "1.0.6";
+# 11 July 2016
 
 #######################################################################################
 #                                       Perkins                                       #
@@ -588,7 +588,7 @@ while (<INPUTFILE>) {
      ############################################################################
      # NOTE Moved from word section (below) to input_line section in 380
      $input_line = &fix_specific_rarities($input_line);
-     
+
      ############################################################################
      #                   PRE-PROCESSING: Fix odd characters                     #
      ############################################################################
@@ -671,7 +671,7 @@ while (<INPUTFILE>) {
                #              MODIFY SINGLE WORDS IN ORTHOGRAPHIC FORM          #
                ##################################################################
                $word = modify_single_ortho_words($word);
-               
+
 			######################################################################
 			# DANGER NEW in 104!                                                 #
 			#         PRE-PROCESSING: Convert double (or more) vowels to singles #
@@ -687,7 +687,7 @@ while (<INPUTFILE>) {
                #                       FIX LETTER PATTERNS                      #
                ##################################################################
                $word = fix_letter_patters($word);
-               
+
                #print "PRECLEAN-ORTHO-AFT   :$word:\n";    # AD-HOC DEBUG
 
           }
@@ -711,7 +711,7 @@ while (<INPUTFILE>) {
           # CONVERT (MOST) GRAPHEMES TO INTERMEDIATE REPRESENTATIONS OF PHONEMES     #
           ############################################################################
           $word = convert_graphemes_to_interm_phonemes($word);
-          
+
           ############################################################################
           #     CHANGE INTERMEDIATE REPRESENTATIONS OF PHONEMES TO THEIR DEFINITIVE  #
           #                        **ONE-CHARACTER** FORMS                           #
@@ -1335,7 +1335,7 @@ sub print_help {
           print STDOUT "\nOPCIONES PARA DETERMINADOS FONEMAS:";
           print STDOUT "\n -multi, -ms                 Usar múltiples símbolos AFI para algunos fonemas.";
           print STDOUT "\n -och                        Representar el fonema \"ch\" como /ʧ/ independiente de";
-          print STDOUT "\n                               cualquier otra configuración."; 
+          print STDOUT "\n                               cualquier otra configuración.";
           print STDOUT "\n -tg                         Tratar /tr/ como fonema (usar ligadura o representarlo";
           print STDOUT "\n                                como fricativa retrofleja /ʂ/).";
           print STDOUT "\n -yf                         Representar el fonema \"ye\" como fricativa /ʝ/.";
@@ -2101,18 +2101,18 @@ DEBUG CLI: \$glides_with_diacritics    =    $glides_with_diacritics
 DEBUG CLI: \$non_syl_u_with_u_diacr    =    $non_syl_u_with_u_diacr
 DEBUG CLI: \$non_syl_i_with_i_diacr    =    $non_syl_i_with_i_diacr
 
-DEBUG CLI: USER OPTIONS - STRESS    
+DEBUG CLI: USER OPTIONS - STRESS
 DEBUG CLI: \$stress_using_tildes       =    $stress_using_tildes
 DEBUG CLI: \$no_stress_marks           =    $no_stress_marks
 DEBUG CLI: \$non_ipa_apostrophes       =    $non_ipa_apostrophes
 
-DEBUG CLI: USER OPTIONS - SYLLABLES 
+DEBUG CLI: USER OPTIONS - SYLLABLES
 DEBUG CLI: \$insert_syllable_dots      =    $insert_syllable_dots
 DEBUG CLI: \$split_at_syllables        =    $split_at_syllables
 DEBUG CLI: \$syllabify_by_sentence     =    $syllabify_by_sentence
 DEBUG CLI: \$syllable_dots_are_spaces  =    $syllable_dots_are_spaces
 
-DEBUG CLI: USER OPTIONS - PAUSES    
+DEBUG CLI: USER OPTIONS - PAUSES
 DEBUG CLI: \$ipa_pause_symbols         =    $ipa_pause_symbols
 DEBUG CLI: \$add_comma_pauses          =    $add_comma_pauses
 DEBUG CLI: \$add_colon_pauses          =    $add_colon_pauses
@@ -2123,20 +2123,20 @@ DEBUG CLI: \$add_ellipsis_pauses       =    $add_ellipsis_pauses
 DEBUG CLI: \$add_bracket_pauses        =    $add_bracket_pauses
 DEBUG CLI: \$add_paren_pauses          =    $add_paren_pauses
 
-DEBUG CLI: USER OPTIONS - NUMBERS  
+DEBUG CLI: USER OPTIONS - NUMBERS
 DEBUG CLI: \$numerals_to_words         =    $numerals_to_words
 DEBUG CLI: \$num_symbol                =    $num_symbol
 DEBUG CLI: \$narrow_year_ranges        =    $narrow_year_ranges
 DEBUG CLI: \$broad_year_ranges         =    $broad_year_ranges
 DEBUG CLI: \$bc_dates_included         =    $bc_dates_included
 
-DEBUG CLI: USER OPTIONS - ODD CHARACTERS   
+DEBUG CLI: USER OPTIONS - ODD CHARACTERS
 DEBUG CLI: \$fix_umlauts               =    $fix_umlauts
 DEBUG CLI: \$fix_grave_accents         =    $fix_grave_accents
 DEBUG CLI: \$fix_circumflexes          =    $fix_circumflexes
 DEBUG CLI: \$fix_nasal_tildes          =    $fix_nasal_tildes
 
-DEBUG CLI: USER OPTIONS - SUBSTITUTIONS    
+DEBUG CLI: USER OPTIONS - SUBSTITUTIONS
 DEBUG CLI: \$moneda                    =    $moneda
 DEBUG CLI: \$slash                     =    $slash
 DEBUG CLI: \$process_urls              =    $process_urls
@@ -2145,17 +2145,17 @@ DEBUG CLI: \$name_for_v                =    $name_for_v
 DEBUG CLI: \$keep_paragraphs           =    $keep_paragraphs
 DEBUG CLI: \$vertical_output           =    $vertical_output
 
-DEBUG CLI: OPTIONS THAT USERS MAY *NOT* CONFIGURE  
+DEBUG CLI: OPTIONS THAT USERS MAY *NOT* CONFIGURE
 DEBUG CLI: \$semi_narrow               =    $semi_narrow
 DEBUG CLI: \$cleanup_output_file       =    $cleanup_output_file
 DEBUG CLI: \$no_separate_cleanup_file  =    $no_separate_cleanup_file
 
-DEBUG CLI: OUTPUT: CLEANUP OPTIONS   
+DEBUG CLI: OUTPUT: CLEANUP OPTIONS
 DEBUG CLI: \$preclean_orthographic     =    $preclean_orthographic
 DEBUG CLI: \$preclean_semiphonemic     =    $preclean_semiphonemic
 DEBUG CLI: \$preclean_phonemic         =    $preclean_phonemic
 
-DEBUG CLI: MISC                      
+DEBUG CLI: MISC
 DEBUG CLI: \$upper_case                =    $upper_case
 DEBUG CLI: \$kill_common_words         =    $kill_common_words
 
@@ -2383,7 +2383,7 @@ sub forcibly_set_variables {
           $kill_common_words        = 0;
           $silent_mode              = 0;
           $all_year_ranges          = 1;
-          
+
           $ipa_long_pause_two_singles = 1;
      }
 
@@ -3672,7 +3672,7 @@ sub expand_abbreviations_ortho {
 sub convert_numerals_to_words {
 
      my $current_item = $_[0];
-     
+
      # Invoke the Lingua::ES::Numeros module and set options                    #
      $numeral_converter_obj = Lingua::ES::Numeros->new(
           DECIMAL     => ',',
@@ -3764,11 +3764,11 @@ sub convert_numerals_to_words {
           # Process all other integer numbers                                            #
           # Don't use "\b" in the first search expr - it catches too much ("2" in "3,2") #
           $current_item =~ s/( |\(|\{|\[|\/|^)(\d{1,3})((\.\d{3})*)(\D|$)/eval q{
-          
+
                # print STDOUT "1=$1\t2=$2\t3=$3\t4=$4\t5=$5\t6=$6\ttemp_num=$temp_num\n"; # AD-HOC DEBUG
-               
+
                $temp_num = join ('', $2, $3);               # Concatenate the parts of the extracted integer
-          
+
                if ( $5 eq "," ) {                                # If $5 is a comma, do this...
                     " " .                                        # Prepend a space
                     $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
@@ -3788,9 +3788,9 @@ sub convert_numerals_to_words {
 
           # Process fractions (numbers to right of decimal point)               #
           $current_item =~ s/(,)(\d+)/eval q{
-             
+
                # print STDOUT "1=$1\t2=$2\n"; # AD-HOC DEBUG
-              
+
                " kóma " .                                        # Convert ">," to " kóma "
                &convert_fractional_nums_to_words($2)             # Send fractional num to conversion subroutine
           }/ge;
@@ -3877,11 +3877,11 @@ sub convert_numerals_to_words {
           # Process all other integer numbers                                            #
           # Don't use "\b" in the first search expr - it catches too much ("2" in "3,2") #
           $current_item =~ s/( |\(|\{|\[|\/|^)(\d{1,3})((\.\d{3})*)(\D|$)/eval q{
-          
+
                #print STDOUT "1=$1\t2=$2\t3=$3\t4=$4\t5=$5\t6=$6\ttemp_num=$temp_num\n"; # AD-HOC DEBUG
-               
+
                $temp_num = join ('', $2, $3);               # Concatenate the parts of the extracted integer
-          
+
                if ( $5 eq "," ) {                                # If $5 is a comma, do this...
                     " " .                                        # Prepend a space
                     $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
@@ -3902,9 +3902,9 @@ sub convert_numerals_to_words {
           # Process fractions (numbers to right of decimal point)               #
           # 392: TESTING: Changed "(\d+)?" to "(\d)", as I think it was changing all commas.
           $current_item =~ s/(>?,)(\d+)/eval q{
-             
+
                #print STDOUT "1=$1\t2=$2\n"; # AD-HOC DEBUG
-              
+
                " koma " .                                        # Convert ">," to " koma "
                &convert_fractional_nums_to_words($2)             # Send fractional num to conversion subroutine
           }/ge;
@@ -4050,10 +4050,10 @@ sub replace_multiword_phrases {
      else {
           $current_item =~ s/(\w+)mente/$1 _ménte/g;    # Space and underscore added to allow temporary processing and later rejoining
      }
-               
+
                     # FOR DEBUGGING
                     #print STDOUT "\n$current_item"; # FOR DEBUGGING
-     
+
      # Other phrases and things which need spaces on either end or in the middle.
      $current_item =~ s/afdd/asociación de familiares de detenidos desaparecidos/g;
      $current_item =~ s/beethoven/betoven/g;
@@ -4101,17 +4101,17 @@ sub replace_multiword_phrases {
      $current_item =~ s/plan b/planbé/g;
      $current_item =~ s/data show/datachó/g;
 
-     # NEW IN 102: Process multi-word backchannel vocalizations  
+     # NEW IN 102: Process multi-word backchannel vocalizations
      #   +++++     These must be in ALL CAPS.
      $current_item =~ s/mm hm/MMHM/g;
      $current_item =~ s/nn nn/NNNN/g;
      $current_item =~ s/uh huh/UHHUH/g;
      $current_item =~ s/uh oh/UHOH/g;
      $current_item =~ s/uh uh/UHUH/g;
-     
+
      # NEW IN 103
      $current_item =~ s/wi fi/wáifai/g;
-     
+
      # REMOVE MULTIPLE SPACES
      $current_item =~ s/ ( )+/ /g;
 
@@ -4160,12 +4160,12 @@ sub fix_specific_rarities {
 #                                                                          #
 ############################################################################
 sub double_vowels_to_single_vowels {
-		
+
 	my $current_item = $_[0];
 
 	# DEBUG:
 	#print STDOUT "BEFORE: $current_item\n";
-	
+
      $current_item =~ s/[a]+/a/g;
      $current_item =~ s/[e]+/e/g;
      $current_item =~ s/[i]+/i/g;
@@ -4174,7 +4174,7 @@ sub double_vowels_to_single_vowels {
 
 	# DEBUG:
      #print STDOUT "AFTER: $current_item\n\n";
-     
+
      return ($current_item);
 }
 
@@ -4216,7 +4216,7 @@ sub fix_odd_characters {
           $current_item =~ s/ã/a/g;
           $current_item =~ s/õ/o/g;
      }
-     
+
      return ($current_item);
 }    # END SUBROUTINE
 
@@ -4624,7 +4624,7 @@ sub modify_single_ortho_words {
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)yahoo($|\.|,|:|;|"|-|‖|\]|\)|\})/$1yajú$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)(y|j)on(n|)at(t|h|)an($|\.|,|:|;|"|-|‖|\]|\)|\})/$1yónatan$5/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)youtube($|\.|,|:|;|"|-|‖|\]|\)|\})/$1yutub$2/g;
-     
+
      # NEW AS OF 0451
      # Exceptions for single words!
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)evelyn($|\.|,|:|;|"|-|‖|\]|\)|\})/$1évelin$2/g;
@@ -4638,7 +4638,7 @@ sub modify_single_ortho_words {
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)molotov($|\.|,|:|;|"|-|‖|\]|\)|\})/$1mólotov$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)eduvigis($|\.|,|:|;|"|-|‖|\]|\)|\})/$1eduvíguis$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)vries($|\.|,|:|;|"|-|‖|\]|\)|\})/$1vríes$2/g;
-     
+
      # NEW AS OF 101
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)j(h|)o(h|)n($|\.|,|:|;|"|-|‖|\]|\)|\})/$1yon$4/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)j(h|)o(h|)nat(h|)an($|\.|,|:|;|"|-|‖|\]|\)|\})/$1yónatan$5/g;
@@ -4660,7 +4660,7 @@ sub modify_single_ortho_words {
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)reggaet(o|ó)n($|\.|,|:|;|"|-|‖|\]|\)|\})/$1reguetón$3/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)software($|\.|,|:|;|"|-|‖|\]|\)|\})/$1sófwer$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)super($|\.|,|:|;|"|-|‖|\]|\)|\})/$1súper$2/g;
-	
+
 	# NEW IN 104:
 	$current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)afp($|\.|,|:|;|"|-|‖|\]|\)|\})/$1aefepé$2/g;
 	$current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)abp($|\.|,|:|;|"|-|‖|\]|\)|\})/$1abepé$2/g;
@@ -4693,7 +4693,7 @@ sub modify_single_ortho_words {
 	$current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)touch($|\.|,|:|;|"|-|‖|\]|\)|\})/$1tach$2/g;
 	$current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)good($|\.|,|:|;|"|-|‖|\]|\)|\})/$1gud$2/g;
 	$current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)wood($|\.|,|:|;|"|-|‖|\]|\)|\})/$1wud$2/g;
-	
+
      # Convert *common* Roman numerals to Hindu-Arabic ones.                          #
      # Those that coincide with single latin letters (e.g. "i") and words (e.g. "vi") #
      # are NOT converted.                                                             #
@@ -4740,7 +4740,7 @@ sub modify_single_ortho_words {
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)jsp($|\.|,|:|;|"|-|‖|\]|\)|\}|>)/$1jotaesepé$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)cgi($|\.|,|:|;|"|-|‖|\]|\)|\}|>)/$1segeí$2/g;
 
-     # NEW IN 102: Process SINGLE-word backchannel vocalizations  
+     # NEW IN 102: Process SINGLE-word backchannel vocalizations
      #   +++++     These must be in ALL CAPS.
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)ah($|\.|,|:|;|"|-|‖|\]|\)|\}|>)/$1AH$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)ch($|\.|,|:|;|"|-|‖|\]|\)|\}|>)/$1CH$2/g;
@@ -4759,7 +4759,7 @@ sub modify_single_ortho_words {
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)anthony($|\.|,|:|;|"|-|‖|\]|\)|\}|>)/$1ántoni$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)wifi($|\.|,|:|;|"|-|‖|\]|\)|\}|>)/$1wáifai$2/g;
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)kinder($|\.|,|:|;|"|-|‖|\]|\)|\}|>)/$1kínder$2/g;
- 
+
      return ($current_item);
 }
 
@@ -4867,7 +4867,7 @@ sub fix_letter_patters {
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)gn/$1n/g;       # GNomo > Nomo, GNeiss > Neiss  # WARNING Added in 3-0-8
      $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)chr/$1cr/g;     # "christopher" > cristopher # WARNING Added in 312
                                                                      # WARNING Added in 3-0-0.
-     
+
 	# Added conditional statement in 103
 	if ( $add_epenthetic_g == 1 ) {
 		#$current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)w/$1gw/g;       # Westfaliano > GWestfaliano, Web > GWeb
@@ -5010,7 +5010,7 @@ sub convert_punctuation_to_pauses {
 ############################################################################
 
 sub convert_backchannel_vocalizations {
-     
+
      # To add backchannel vocalizations several things need to be done:
      # 1a. If they're multi-word (e.g. "mm hm"), you have to go to the
      #    replace_multiword_phrases subroutine and add an entry for them,
@@ -5022,32 +5022,32 @@ sub convert_backchannel_vocalizations {
      #    including syllabification. This MIGHT cause problems with certain
      #    types of transcripcion (e.g. CV)... haven't tested this yet. Some things
      #    don't work quite right, either: /ch/ gets a dental diacritic placed on the t.
-     
+
      my $current_item = $_[0];
-               
+
                # DEBUG
                #print STDOUT "\n\$current_item = $current_item";    # NOTE: DEBUG
-     
+
      $current_item =~ s/MMHM/m̩.ˈhm̩/g;
      $current_item =~ s/NNNN/ˈnt̚.n̩/g;
      $current_item =~ s/UHHUH/ʔʌ.ˈhʌ/g;
      $current_item =~ s/UHOH/ˈʔʌ.ʔo/g;
      $current_item =~ s/UHUH/ˈʔʌ.ʔʌ/g;
-     
+
      $current_item =~ s/AH/aː/g;
      $current_item =~ s/EH/eː/g;
      $current_item =~ s/OH/oː/g;
      $current_item =~ s/UH/uː/g;
-     
+
      $current_item =~ s/FF/f̩ː/g;
      $current_item =~ s/PF/pf̩ː/g;
      $current_item =~ s/MM/m̩ː/g;
      $current_item =~ s/HM/hm̩ː/g;
      $current_item =~ s/CH/ʧʃ ̩ː/g;
      $current_item =~ s/SH/ʃ ̩ː/g;
-     
+
      return ($current_item);
-     
+
 }
 
 
@@ -5112,7 +5112,7 @@ sub convert_graphemes_to_interm_phonemes {
      else {
           $current_item =~ s/hu$all_vowels/\{W\}$1/g;    # "huevo" > hwebo > /webo/, "huacho" > /wacho/
      }
-     
+
      $current_item =~ s/h//g;                            # Eliminate <h> in all other cases.
 
      # Grapheme <g>
@@ -5144,15 +5144,15 @@ sub convert_graphemes_to_interm_phonemes {
      # NEW in 105: Key line for fixing voseo accentuation
      # WARNING TESTING
      # If there's a word-final grapheme "y", make the last vowel acute.
-	$current_item =~ s/i\{J\}$/íj/g; 
+	$current_item =~ s/i\{J\}$/íj/g;
 	$current_item =~ s/e\{J\}$/éj/g;
 	$current_item =~ s/a\{J\}$/áj/g;
 	$current_item =~ s/o\{J\}$/ój/g;
 	$current_item =~ s/u\{J\}$/új/g;
-	
+
 	#print "\n$current_item";	# DEBUG
-	
-     
+
+
      # NEW in 105: Key line for fixing voseo accentuation
      # WARNING TESTING
      # I disabled the following, as the preceding should take care of it.
@@ -5161,7 +5161,7 @@ sub convert_graphemes_to_interm_phonemes {
      # Fix grapheme <y> at end of word, so it's /i/ (or /j/), and not /ʤ/
      #$current_item =~ s/\{J\}$/i/g;
      #print "\n$current_item";	# DEBUG
-     
+
      # Fix the grapheme <y> when it's representing the preposition "y"
      $current_item =~ s/^\{J\}$/i/g;
      # DEBUG
@@ -5233,9 +5233,9 @@ sub process_diphthongs {
      # Turn /i/ into /j/ in diphthongs
      $current_item =~ s/(a|e|a|o|u)i/$1j/g;
      $current_item =~ s/(a|e|a|o)u/$1w/g;
-	
+
 	#print "\n==> DIPHTHONG PROCESSED: $current_item"; # DEBUG 105
-	
+
      return ($current_item);
 
 }
@@ -5261,11 +5261,11 @@ sub stress_accent_routine {
 
      # Get the vowel characters and count them.
      $vowels = $current_item;
-     
+
      # Here is an odd but necessary mix of phonemes (b,d,ɾ) and graphemes (y,z). #
      # This line removes them to leave just vowels.                              #
      $vowels =~ s/(b|ʧ|d|ʤ|f|g|j|k|l|m|n|ɲ|p|ɾ|r|s|ʂ|t|w|x|y|z)//g;
-     
+
      #print "\n$vowels";	# DEBUG
 
      $accent         = "";    # Reset this just in case.
@@ -5273,7 +5273,7 @@ sub stress_accent_routine {
 
      # Get the number of vowels in the word being analyzed.
      $vowel_count = length($vowels);
-     
+
      #print "\nCurrent Item:\t$current_item\nVowels:\t\t$vowels ($vowel_count)\n";	# DEBUG 105
 
      ############################################################################
@@ -5313,7 +5313,7 @@ sub stress_accent_routine {
      #     $accent = "acute";
 	elsif ( $character[-1] =~ m/[$acute_consonants_except_j]/ ) {
            $accent = "acute";
-           
+
           #######################################################################
           # This is a rather complex way of figuring out the last vowel.        #
           #######################################################################
@@ -5364,7 +5364,7 @@ sub stress_accent_routine {
      }
 
      #print "Accent: $accent\t$current_item\n";	# DEBUG
-     
+
      return ($current_item);
 
 }
@@ -5381,7 +5381,7 @@ sub final_touches_broad_transcr {
 
      # Phoneme /j/ at end of word
      $current_item =~ s/([^$all_vowels])j$/$1i/g;    # <y> a final de palabra = /i/: "Uruguay"
-     
+
      return ($current_item);
 
 }
@@ -5645,10 +5645,10 @@ sub perform_syllabification {
                # Increment $i so as not to repeatedly process this cluster
                $i = $i + 2;
           }
-          
-          
-          
-          
+
+
+
+
 
          #################################################################################
           #                           SYLLABIFICATION RULE 11                             #
@@ -6227,7 +6227,7 @@ sub perform_syllabification {
 
           # WARNING Added in 396
           $current_item =~ s/j\.l\.t/jl\.t/g;            # "mailto": mej.l.tu > mejl.tu
-          
+
           #PLACEHOLDER 3
 
           if ( $debug_syllab_sub == 1 ) {
@@ -6315,7 +6315,7 @@ sub opt_use_multichars {
      }
 
 	# WARNING: The following was changed in 103. All the "&&..." statements are new, as are a few others.
-	
+
 	# Process /ʧ/
      if ( $ch_dzh_retracted == 1 && $use_one_char_ch_symbol == 0 ) {
           if ( $use_ligatures == 1 ) {
@@ -6332,13 +6332,13 @@ sub opt_use_multichars {
                $current_item =~ s/ʧ/t͡ʃ/g;
           }
           else {
-			if ( $use_one_char_ch_symbol == 0 ) { 
+			if ( $use_one_char_ch_symbol == 0 ) {
                $current_item =~ s/ʧ/tʃ/g;
                }
           }
      }
-     
-     
+
+
 	# Process /ʤ/
 	if ( $ch_dzh_retracted == 1 && $use_one_char_ye_symbol == 0 ) {
           if ( $use_ligatures == 1 ) {
@@ -6355,7 +6355,7 @@ sub opt_use_multichars {
                $current_item =~ s/ʤ/d͡ʒ/g;
           }
           else {
-			if ( $use_one_char_ye_symbol == 0 ) { 
+			if ( $use_one_char_ye_symbol == 0 ) {
                $current_item =~ s/ʤ/dʒ/g;
                }
           }
