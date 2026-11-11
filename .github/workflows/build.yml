@@ -1,0 +1,190 @@
+name: Build Perkins binaries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # Nothing is built if any file of the repository, or the last commit's
+  # author, committer or message, holds one of the terms in the repository
+  # secret PRIVATE_TERMS (one per line, not case-sensitive). Only file names
+  # and counts are printed, never the terms. Without the secret the check is
+  # skipped.
+  privacy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check for private information
+        env:
+          PRIVATE_TERMS: ${{ secrets.PRIVATE_TERMS }}
+        run: |
+          if [ -z "$PRIVATE_TERMS" ]; then
+            echo "The secret PRIVATE_TERMS is not set: check skipped."
+            exit 0
+          fi
+          terms="$RUNNER_TEMP/terms"
+          printf '%s\n' "$PRIVATE_TERMS" | tr -d '\r' | sed '/^[[:space:]]*$/d' > "$terms"
+          found=0
+          files=0
+          while IFS= read -r f; do
+            files=$((files + 1))
+            n=$(grep -c -I -i -F -f "$terms" -- "$f" || true)
+            if [ "${n:-0}" -gt 0 ]; then
+              echo "PRIVATE INFORMATION: $n line(s) in $f"
+              found=1
+            fi
+          done < <(git ls-files)
+          n=$(git log -1 --format='%an%n%ae%n%cn%n%ce%n%B' | grep -c -i -F -f "$terms" || true)
+          if [ "${n:-0}" -gt 0 ]; then
+            echo "PRIVATE INFORMATION: $n line(s) in the last commit's author, committer or message"
+            found=1
+          fi
+          if [ "$found" -eq 0 ]; then
+            echo "No private terms in $files files or in the last commit."
+          fi
+          exit "$found"
+
+  build:
+    needs: privacy
+    strategy:
+      fail-fast: false
+      matrix:
+        # One entry per binary. os: the machine GitHub builds on; out: the
+        # file pp writes; asset: its name on the release; packages: the Linux
+        # packages made from it (none for Windows and macOS); pkgarch and
+        # nfpmarch: the processor as the packages and the nfpm download name
+        # it.
+        include:
+          - os: ubuntu-22.04
+            out: perkins
+            asset: perkins-linux-x86_64
+            packages: deb rpm archlinux
+            pkgarch: amd64
+            nfpmarch: x86_64
+          - os: ubuntu-22.04-arm
+            out: perkins
+            asset: perkins-linux-arm64
+            packages: deb rpm
+            pkgarch: arm64
+            nfpmarch: arm64
+          - os: windows-latest
+            out: perkins.exe
+            asset: perkins-windows-x86_64.exe
+            packages: ''
+          - os: macos-latest
+            out: perkins
+            asset: perkins-macos-arm64
+            packages: ''
+          - os: macos-15-intel
+            out: perkins
+            asset: perkins-macos-x86_64
+            packages: ''
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Linux: a Perl built without libcrypt. Ubuntu's libcrypt is
+      # libcrypt.so.1 and Fedora's is libcrypt.so.2, so a binary that needs
+      # either one does not run on the other distribution. Perkins never
+      # uses crypt().
+      - name: Build Perl without libcrypt
+        if: runner.os == 'Linux'
+        run: |
+          curl -sSL -o perl.tar.gz https://www.cpan.org/src/5.0/perl-5.40.0.tar.gz
+          echo "c740348f357396327a9795d3e8323bafd0fe8a5c7835fc1cbaba0cc8dfe7161f  perl.tar.gz" | sha256sum -c
+          tar xzf perl.tar.gz
+          cd perl-5.40.0
+          ./Configure -des -Dprefix="$HOME/perl-nocrypt" -Duseshrplib -Dlibswanted='m dl pthread c' > /dev/null
+          make -j"$(nproc)" > /dev/null
+          make install > /dev/null
+          echo "$HOME/perl-nocrypt/bin" >> "$GITHUB_PATH"
+
+      - name: Install cpanm
+        if: runner.os == 'Linux'
+        run: curl -sSL https://cpanmin.us | perl - --notest App::cpanminus
+
+      - uses: shogo82148/actions-setup-perl@v1
+        if: runner.os != 'Linux'
+        with:
+          perl-version: '5.40'
+          distribution: ${{ runner.os == 'Windows' && 'strawberry' || 'default' }}
+
+      - name: Install the modules
+        run: cpanm --notest PAR::Packer Roman Lingua::ES::Numeros
+
+      - name: Compile
+        run: pp -M Roman -M Lingua::ES::Numeros -o ${{ matrix.out }} perkins.pl
+
+      - name: Test, with the Perl used for building out of reach
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            perlroot="$(dirname "$(dirname "$(command -v perl)")")"
+            mv "$perlroot" "$perlroot-hidden"
+            echo "hidden: $perlroot"
+          fi
+          PATH="/usr/bin:/bin:/c/Windows/System32:/c/Windows" bash tests/run-test.sh "$PWD/${{ matrix.out }}"
+
+      - name: Test the Linux binary on Fedora
+        if: runner.os == 'Linux'
+        run: docker run --rm -v "$PWD:/w" -w /w fedora:latest bash -c 'dnf -y -q install diffutils && bash tests/run-test.sh /w/perkins'
+
+      - name: Name the binary
+        shell: bash
+        run: mv ${{ matrix.out }} ${{ matrix.asset }}
+
+      - name: Make the Linux packages
+        if: matrix.packages != ''
+        run: |
+          base=https://github.com/goreleaser/nfpm/releases/download/v2.47.0
+          tarball=nfpm_2.47.0_Linux_${{ matrix.nfpmarch }}.tar.gz
+          curl -fsSL -o "$tarball" "$base/$tarball"
+          curl -fsSL -o nfpm-checksums.txt "$base/checksums.txt" || curl -fsSL -o nfpm-checksums.txt "$base/nfpm_2.47.0_checksums.txt"
+          grep " $tarball\$" nfpm-checksums.txt | sha256sum -c
+          tar xzf "$tarball" nfpm
+          export PERKINS_VERSION="$(sed -n 's/^my \$version = "\(.*\)";.*/\1/p' perkins.pl)"
+          echo "version: $PERKINS_VERSION"
+          test -n "$PERKINS_VERSION"
+          mkdir -p pkgroot dist
+          cp ${{ matrix.asset }} pkgroot/perkins
+          sed 's/^arch: .*/arch: ${{ matrix.pkgarch }}/' packaging/nfpm.yaml > nfpm-run.yaml
+          for p in ${{ matrix.packages }}; do ./nfpm package --config nfpm-run.yaml --packager "$p" --target dist/; done
+          ls -l dist
+
+      - name: Test the packages
+        if: matrix.packages != ''
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w fedora:latest bash -c 'dnf -y -q install diffutils ./dist/*.rpm && bash tests/run-test.sh'
+          docker run --rm -v "$PWD:/w" -w /w debian:stable bash -c 'apt-get -qq update && apt-get -y -qq install ./dist/*.deb > /dev/null && bash tests/run-test.sh'
+          docker run --rm -v "$PWD:/w" -w /w ubuntu:24.04 bash -c 'apt-get -qq update && apt-get -y -qq install ./dist/*.deb > /dev/null && bash tests/run-test.sh'
+          if ls dist/*.pkg.tar.zst > /dev/null 2>&1; then
+            docker run --rm -v "$PWD:/w" -w /w archlinux:latest bash -c 'pacman -Sy --noconfirm --needed diffutils > /dev/null && pacman -U --noconfirm ./dist/*.pkg.tar.zst > /dev/null && bash tests/run-test.sh'
+          fi
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+
+      - uses: actions/upload-artifact@v6
+        if: matrix.packages != ''
+        with:
+          name: ${{ matrix.asset }}-packages
+          path: dist/*
+
+      - name: Attach it to the release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.asset }}
+
+      - name: Attach the packages to the release
+        if: github.event_name == 'release' && matrix.packages != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*

@@ -1,0 +1,46 @@
+# Packages for Linux: .deb (Debian, Ubuntu), .rpm (Fedora) and Arch Linux,
+# made by nfpm from the Linux binary that the GitHub build compiles and
+# tests. The build copies that binary to pkgroot/perkins, takes the version
+# from perkins.pl and replaces arch with the processor of each binary.
+name: perkins
+arch: amd64
+platform: linux
+version: ${PERKINS_VERSION}
+release: 1
+section: text
+priority: optional
+maintainer: Scott Sadowsky <Linguista@users.noreply.github.com>
+vendor: Scott Sadowsky
+homepage: https://github.com/Linguista/Perkins
+license: AGPL-3.0-or-later
+description: |-
+  Spanish phonemic and semi-narrow transcription, syllables and stress.
+  Perkins turns Spanish orthographic text into phonemic or semi-narrow
+  transcription (phonemic with all phonologically predictable changes),
+  with syllabification and stress, or into
+  category strings (CV, manner, place, voicing). It has modes for running
+  text, word lists, Montreal Forced Aligner dictionaries, Praat word tiers
+  and token-aligned output for FreeLing CoNLL files.
+contents:
+  - src: ./pkgroot/perkins
+    dst: /usr/bin/perkins
+    file_info:
+      mode: 0755
+  - src: ./README.md
+    dst: /usr/share/doc/perkins/README.md
+    type: doc
+  - src: ./perkins_README.md
+    dst: /usr/share/doc/perkins/perkins_README.md
+    type: doc
+  - src: ./HOWTO--Perkins-narrow-transcription.md
+    dst: /usr/share/doc/perkins/HOWTO--Perkins-narrow-transcription.md
+    type: doc
+  - src: ./perkins-narrow-transcription-ruleset_README.md
+    dst: /usr/share/doc/perkins/perkins-narrow-transcription-ruleset_README.md
+    type: doc
+  - src: ./perkins.ini
+    dst: /usr/share/doc/perkins/perkins.ini
+    type: doc
+  - src: ./LICENSE.md
+    dst: /usr/share/licenses/perkins/LICENSE.md
+    type: license
