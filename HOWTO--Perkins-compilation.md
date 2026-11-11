@@ -1,6 +1,6 @@
 # HOWTO--Perkins-compilation.md
 
-How to turn the Perkins source (`perkins.pl`) into the stand-alone binary `perkins` (Linux, macOS) or `perkins.exe` (Windows), check it and install it, and how GitHub builds the binaries and the Linux packages. Current as of Perkins v2.0.37.
+How to turn the Perkins source (`perkins.pl`) into the stand-alone binary `perkins` (Linux, macOS) or `perkins.exe` (Windows), check it and install it, and how GitHub builds the binaries and the Linux packages. Current as of Perkins v2.0.38.
 
 ## 10. What the binary is
 
@@ -86,11 +86,11 @@ When a release is published there, GitHub:
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.37-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.37-1_amd64.deb` |
-| `perkins-2.0.37-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.37-1.x86_64.rpm` |
-| `perkins-2.0.37-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.37-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.37-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.37-1_arm64.deb` |
-| `perkins-2.0.37-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.37-1.aarch64.rpm` |
+| `perkins_2.0.38-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.38-1_amd64.deb` |
+| `perkins-2.0.38-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.38-1.x86_64.rpm` |
+| `perkins-2.0.38-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.38-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.38-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.38-1_arm64.deb` |
+| `perkins-2.0.38-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.38-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | `chmod +x perkins-linux-x86_64` and move it to a folder on the PATH as `perkins` |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | as above |
 | `perkins-windows-x86_64.exe` | Windows, also Windows on ARM, which runs it through its emulation | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -106,8 +106,8 @@ These are all the systems GitHub can build on. Not covered: 32-bit systems, and 
 ### Publishing a release
 
 1. Open https://github.com/Linguista/Perkins/releases/new
-2. In **Choose a tag**, type the version, for example `2.0.37`, and click **Create new tag: 2.0.37 on publish**. Leave **Target** at `master`.
-3. Give it a title (`Perkins 2.0.37`) and a description.
+2. In **Choose a tag**, type the version, for example `2.0.38`, and click **Create new tag: 2.0.38 on publish**. Leave **Target** at `master`.
+3. Give it a title (`Perkins 2.0.38`) and a description.
 4. Leave **Set as the latest release** ticked, and press **Publish release**.
 
 The build takes about fifteen minutes; its progress is on the repository's **Actions** tab. When it is green, the binaries and the packages are listed under the release's **Assets**. If one platform fails, the others are still attached, and the failure's log is on the Actions tab.
@@ -116,7 +116,7 @@ The same build can be run without a release, as a check: **Actions** → **Build
 
 ### Retiring an older release
 
-A newer release becomes the one marked **Latest**, and the older one stays listed below it. To mark an older one as superseded, open it on the Releases page, press the pencil, add a line such as "Superseded by 2.0.37" to its description, and press **Update release**. To remove it, press the trash icon beside it on the Releases page and confirm; this removes its page and its attached files, while its tag, and the files of that version in the repository's history, remain.
+A newer release becomes the one marked **Latest**, and the older one stays listed below it. To mark an older one as superseded, open it on the Releases page, press the pencil, add a line such as "Superseded by 2.0.38" to its description, and press **Update release**. To remove it, press the trash icon beside it on the Releases page and confirm; this removes its page and its attached files, while its tag, and the files of that version in the repository's history, remain.
 
 ### Choosing what is built
 
@@ -148,4 +148,5 @@ The build checks this before anything else. The repository secret `PRIVATE_TERMS
 - The binaries up to 2.0.36 were built by hand on Linux with `pp -M Roman -M Lingua::ES::Numeros`. 2.0.0 was once built with `staticperl mkapp`; that method is no longer used.
 - 2.0.36 was the first version published with binaries built by GitHub for Linux, Windows and macOS, and with `.deb`, `.rpm` and Arch Linux packages.
 - 2.0.37 added the check for private information (section 57), and binaries for Linux on ARM processors and macOS on Intel processors, with `.deb` and `.rpm` packages for ARM.
+- 2.0.38 changed nothing in how Perkins is built; the tests grew from 26 to 40.
 - The repository held Perkins 1.0.6 from 2016; that version, with its binaries, stays in the repository's history.

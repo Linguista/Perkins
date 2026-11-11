@@ -1,10 +1,10 @@
 # README.md (Perkins tests)
 
-Documents `run-test.sh` 1.6.0 and the files beside it.
+Documents `run-test.sh` 1.7.0 and the files beside it.
 
 ## Purpose
 
-Checks that a Perkins build prints exactly what Perkins 2.0.35 printed on 261110 for:
+Checks that a Perkins build prints exactly what Perkins 2.0.35 printed on 261110, with the changes of 2.0.38 (see below), for:
 
 - the test sentence approved on 261030 (`sentence.txt`), phonemic and narrow; its comma is now the short pause |, which is the only difference from the approved line;
 - a TAB-separated token file (`tokens.tok`) in token mode, once for each of the seven COSCACH CoNLL columns: phonemic and narrow, each with syllable dots and the stress mark and each with no syllabification and an accented vowel; manner, place and voicing.
@@ -20,6 +20,12 @@ Checks that a Perkins build prints exactly what Perkins 2.0.35 printed on 261110
 - `-nopi` and `-noclp -noscp` on `pauses.txt`, narrow: ## and (...) after a word, with b keeping its stop after them; and with the colon and semicolon switched off, no pause, so the rules apply across (ʋẽn, ˈpa.sã nõ).
 
 - numbers (`numbers.txt`, `numbers.tok`): a number before a noun agreeing in gender (un perro, una casa, veintiún años, veintiuna horas, doscientas personas, doscientas mil personas, veintiún mil, mil quinientas personas, ciento una noches) and left alone before a word that is not a noun (uno de cada tres); 12.30 as doce punto treinta and 3.75 as tres punto setenta y cinco; ordinals (1a primera, 1er primer, 3as terceras, 1.ª primera, 21a veintiuna).
+
+- word and syllable lists (`lists.txt`, two lines): one word per line with `-owl` and `-vrt` (its own settings: stress with an accent, one character per phoneme), one syllable per line with `-sas`, cut from running text (del año gives d̪e, la, ɲo) or with `-nosbu` from each word (d̪el, a, ɲo), and with `-vrt -sas`; no pause anywhere in a list. Also on `lists.txt`: two output lines with the paragraph pause off (`-noppp`), the capitals of the input in the orthographic column of `-phonword` and no line for a full stop there, and `-f=PLACE` with a vowel as -.
+
+- abbreviations (`abbreviations.txt`): the period of Sr., Sra., art., Bs. As. and no. 12 is not a sentence end, so they are expanded (se.ˈɲoɾ, aɾ.ˈt̪i.ku.lo, ˈbwe.nos ˈaj.ɾes, ˈnu.me.ɾo); no. without a number and etc. still end their sentences.
+
+- ellipses and sentence ends (`ellipsis.txt`, `ellipsis.tok`): … and ... and ?... are the long pause, and are deleted with `-noelp`, also with `-nopi` and in token mode (where voy after titular then lenites to voj); a full stop, ? and ! are deleted with `-nosnp`.
 
 Every output is Unicode NFC: a nasal vowel is one character (ã ẽ ĩ õ ũ). `-mfa` dictionaries are the exception, and no test here uses `-mfa`.
 
@@ -68,10 +74,26 @@ Output: `ok` or `FAIL` per test, with a `diff` (expected first) for each failure
 | pauses-noclp-narrow | pauses.txt | `-nosbu -noclp -noscp -nt` | expected/pauses-noclp-narrow.txt |
 | numbers-phonemic | numbers.txt | `-nosbu` | expected/numbers-phonemic.txt |
 | numbers-tokens | numbers.tok | `-tok` | expected/numbers-tokens.txt |
+| lists-words | lists.txt | `-owl` | expected/lists-words.txt |
+| lists-vrt | lists.txt | `-vrt` | expected/lists-vrt.txt |
+| lists-syllables | lists.txt | `-sas` | expected/lists-syllables.txt |
+| lists-syllables-word | lists.txt | `-sas -nosbu` | expected/lists-syllables-word.txt |
+| lists-vrt-syllables | lists.txt | `-vrt -sas` | expected/lists-vrt-syllables.txt |
+| lists-lines | lists.txt | `-nosbu -noppp` | expected/lists-lines.txt |
+| lists-phonword | lists.txt | `-phonword` | expected/lists-phonword.txt |
+| lists-place | lists.txt | `-nosbu -f=PLACE` | expected/lists-place.txt |
+| abbreviations | abbreviations.txt | `-nosbu` | expected/abbreviations.txt |
+| ellipsis-phonemic | ellipsis.txt | `-nosbu` | expected/ellipsis-phonemic.txt |
+| ellipsis-noelp | ellipsis.txt | `-nosbu -noelp` | expected/ellipsis-noelp.txt |
+| ellipsis-nosnp | ellipsis.txt | `-nosbu -nosnp` | expected/ellipsis-nosnp.txt |
+| ellipsis-nopi-noelp | ellipsis.txt | `-nosbu -nopi -noelp` | expected/ellipsis-nopi-noelp.txt |
+| ellipsis-tokens-noelp | ellipsis.tok | `-tok -nt -noelp` | expected/ellipsis-tokens-noelp.txt |
 
 ## When a change is intended
 
 When a new version changes an output on purpose, check the new output by eye, replace the file in `expected/`, and record the change in the version's changelog. 2.0.35 changed four: `sentence-phonemic` and `sentence-narrow` (the comma pause) and `phrases-phonemic` and `phrases-narrow` (Bon Jovi: jovi is respelled yóbi in the COSCACH review, so it is ˈʝo.bi, not ˈxo.bi). It also rewrote the six narrow expected files (`sentence-narrow`, `tokens-narrow`, `tokens-narrow-nd`, `phrases-narrow`, `features-narrow`, `features-tokens-narrow`) in NFC: each is exactly the NFC form of what it was, so only the nasal vowels changed bytes.
+
+2.0.38 changed `tokens-place` (a vowel is - instead of V, the letter of a velar) and added the fourteen tests from `lists-words` to `ellipsis-tokens-noelp`; their expected files are what 2.0.38 printed on 261111, checked by eye. Each records a fix: the lists used to be written on one line, -vrt syllabified kon.sep.si.ón, consecutive lines were glued with -noppp, -phonword wrote lower case and a ## line, the abbreviations were spelled out (esr ‖ ˈpe.ɾes), and -noelp and -nosnp did nothing.
 
 ## Platform
 

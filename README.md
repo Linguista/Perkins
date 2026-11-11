@@ -1,17 +1,17 @@
 # Perkins
 
-![version](https://img.shields.io/badge/version-2.0.37-1f6feb?style=flat-square)
+![version](https://img.shields.io/badge/version-2.0.38-1f6feb?style=flat-square)
 ![licence](https://img.shields.io/badge/licence-AGPL--3.0-2da44e?style=flat-square)
 ![platforms](https://img.shields.io/badge/runs%20on-Linux%20%7C%20Windows%20%7C%20macOS-8250df?style=flat-square)
 ![processors](https://img.shields.io/badge/processors-x86--64%20%7C%20ARM64-0969da?style=flat-square)
 ![input](https://img.shields.io/badge/input-UTF--8-bf8700?style=flat-square)
 ![output](https://img.shields.io/badge/output-Unicode%20NFC-cf222e?style=flat-square)
 
-Perkins turns Spanish orthographic text into phonemic or semi-narrow transcription (phonemic with all phonologically predictable changes), with syllabification and stress, or into category strings (CV, CVG, CVN, manner, place, voicing). It has modes for running text, word lists, verticalized text, Montreal Forced Aligner dictionaries, Praat word tiers and token-aligned output for FreeLing CoNLL files. Its semi-narrow transcription follows Chilean Spanish.
+Perkins turns Spanish orthographic text into phonemic or semi-narrow transcription (phonemic with all phonologically predictable changes), with syllabification and stress, or into category strings (CV, CVG, CVN, manner, place, voicing). It has modes for running text, lists of words or syllables, Montreal Forced Aligner dictionaries, Praat word tiers and token-aligned output for FreeLing CoNLL files. Its semi-narrow transcription follows Chilean Spanish.
 
 Author: Scott Sadowsky (http://sadowsky.cl). Licence: GNU Affero General Public License, version 3 (`LICENSE.md`).
 
-Every example on this page was produced by Perkins 2.0.37 itself.
+Every example on this page was produced by Perkins 2.0.38 itself.
 
 This is essentially an entirely new program with regard to Perkins 1.0.x. Binaries for Linux, Windows and macOS on Intel and ARM processors, and .deb, .rpm and Arch Linux packages are all built and tested by GitHub. The source code is the original Perl script.
 
@@ -35,15 +35,15 @@ This is essentially an entirely new program with regard to Perkins 1.0.x. Binari
 
 ## Download and installation
 
-Ready-built binaries and Linux packages are attached to each release on the [Releases page](https://github.com/Linguista/Perkins/releases). None of them needs Perl. For version 2.0.37:
+Ready-built binaries and Linux packages are attached to each release on the [Releases page](https://github.com/Linguista/Perkins/releases). None of them needs Perl. For version 2.0.38:
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.37-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.37-1_amd64.deb` |
-| `perkins-2.0.37-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.37-1.x86_64.rpm` |
-| `perkins-2.0.37-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.37-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.37-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.37-1_arm64.deb` |
-| `perkins-2.0.37-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.37-1.aarch64.rpm` |
+| `perkins_2.0.38-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.38-1_amd64.deb` |
+| `perkins-2.0.38-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.38-1.x86_64.rpm` |
+| `perkins-2.0.38-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.38-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.38-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.38-1_arm64.deb` |
+| `perkins-2.0.38-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.38-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | see below |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | see below |
 | `perkins-windows-x86_64.exe` | Windows (also Windows on ARM, which runs it through its emulation) | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -72,7 +72,7 @@ perkins -i=input.txt -o=output.txt -nt -st
 | Rule | |
 |---|---|
 | Input | plain text, **UTF-8**, given with `-i=` |
-| Output | the file given with `-o=`; without it, a name made from the input's name and the mode (`input.PHNM.txt`, `input.MFA.dict`, `input.PHONWORD`) |
+| Output | the file given with `-o=`, which may not be the input file; without it, a name made from the input's name and the mode (`input.PHNM.txt`, `input.MFA.dict`, `input.PHONWORD`, `input.vrt`) |
 | Options | `-x` and `--x` are the same; their order does not matter; there is no limit to how many are used |
 | Turning an option off | put `no` after the dash: `-nomc`, `-nocmp`, `-nosd` |
 | File names with spaces | in quotation marks: `-i="mi archivo.txt"` |
@@ -151,7 +151,8 @@ By default Perkins syllabifies whole sentences, as they are spoken: del año is 
 |---|---|---|---|
 | (default) | ye is the fricative ʝ; ch is t͡ʃ with a tie bar | `ˈʝu.bja` | `ka.ˈt͡ʃaj` |
 | `-ya` | ye is the affricate | `ˈʤu.bja` | `ka.ˈt͡ʃaj` |
-| `-ya -ar` | affricates with the retracted diacritic | `ˈʤu.bja` | `ka.ˈt̠͡ʃaj` |
+| `-ya -nooye` | the affricate with a tie bar, like ch | `ˈd͡ʒu.bja` | `ka.ˈt͡ʃaj` |
+| `-ya -nooye -ar` | affricates with the retracted diacritic | `ˈd̠͡ʒu.bja` | `ka.ˈt̠͡ʃaj` |
 | `-gd` | glides as vowels with the non-syllabic diacritic | `ˈʝu.bi̯a` | `ka.ˈt͡ʃai̯` |
 | `-nomc` | one character per phoneme, no dental diacritic | `ˈʝu.bja` | `ka.ˈʧaj` |
 
@@ -166,7 +167,7 @@ The cluster tr can be treated as one phoneme, as many Chilean speakers pronounce
 
 ## Pauses
 
-A comma or a parenthesis is the short pause |. A full stop, question mark, exclamation mark, colon, semicolon, ellipsis or dash is the long pause ‖, after a word or a number.
+A comma or a parenthesis is the short pause |. A full stop, question mark, exclamation mark, colon, semicolon, ellipsis or dash is the long pause ‖, after a word or a number. The period of an abbreviation is not: Sr. Pérez is se.ˈɲoɾ.ˈpe.ɾes.
 
 Text in square brackets is a transcription marker, not speech: Mira [risas] eso gives `ˈmi.ɾa.???.ˈe.so`. `--marker-symbol=X` writes X instead of ???, and `--no-markers` reads the text in the brackets.
 
@@ -175,6 +176,7 @@ Text in square brackets is a transcription marker, not speech: Mira [risas] eso 
 | `-lp2` | the long pause as two bars, `\|\|`, because Praat cannot show ‖ |
 | `-noip` | pauses as `(.)`, `(...)`, `##` and `###` instead of IPA bars |
 | `-nocmp`, `-noclp`, `-noscp` | commas, colons, semicolons are no pause at all |
+| `-nosnp`, `-noelp` | full stops, question and exclamation marks / ellipses are no pause at all |
 | `-nopnp` | parentheses are no pause |
 
 ```diff
@@ -194,7 +196,7 @@ Each segment can be replaced by its category. Stress marks and syllables are kep
 | `-cvg` | C consonant, V vowel, G glide |
 | `-cvn` | C consonant, V vowel, G glide, N nasal, L liquid, R rhotic |
 | `-f=MANNER`, `-man` | P plosive, N nasal, R trill, T tap, F fricative, L lateral, A affricate, X approximant, V vowel |
-| `-f=PLACE`, `-pl` | B bilabial, L labiodental, D dental, A alveolar, T postalveolar, P palatal, V velar, W labiovelar; a vowel is also V |
+| `-f=PLACE`, `-pl` | B bilabial, L labiodental, D dental, A alveolar, T postalveolar, P palatal, V velar, W labiovelar, - vowel |
 | `-f=V`, `-voicing` | S voiced (vowels included), A voiceless |
 
 ```diff
@@ -205,13 +207,10 @@ Each segment can be replaced by its category. Stress marks and syllables are kep
 @@ perkins -nocfg -i=source.txt -f=MANNER @@
 + VN.PVN.FVP.ˈFXVN | FV.ˈPTV.PV.PV.V.PXVN.ˈPVT.LV.ˈFV.PXV.PV.ˈTVN.PV.ˈFVN.PV.ˈNV.FVF.PV.ˈLV.NV ‖ PV.ˈAVX
 @@ perkins -nocfg -i=source.txt -f=PLACE @@
-+ VA.VVA.AVB.ˈAPVA | AV.ˈDAV.DV.DV.V.VWVA.ˈDVA.AV.ˈPV.BPV.DV.ˈAVA.DV.ˈAVA.VV.ˈBV.AVA.DV.ˈAV.PV ‖ VV.ˈTVP
++ -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.D-.ˈA-A.V-.ˈB-.A-A.D-.ˈA-.P- ‖ V-.ˈT-P
 @@ perkins -nocfg -i=source.txt -f=V @@
 + SS.ASS.ASA.ˈASSS | AS.ˈASS.AS.SS.S.SSSS.ˈASS.SS.ˈSS.SSS.SS.ˈSSS.AS.ˈASS.AS.ˈSS.ASA.SS.ˈSS.SS ‖ AS.ˈASS
 ```
-
-> [!WARNING]
-> With `-f=PLACE` a vowel and a velar are both V. See [Known problems](#known-problems).
 
 > [!CAUTION]
 > `-cv`, `-cvg`, `-cvn` and `-f=V` cannot be combined with `-nt`, because every allophone of a phoneme falls in the same category: Perkins stops with an error. `-f=MANNER` and `-f=PLACE` can, and then show the lenited and nasalized segments.
@@ -267,9 +266,38 @@ Each input line is one sentence, its tokens separated by TABs. Each output line 
 | semi-narrow, no syllables, accent on the vowel | `-tok -nt -nosd -st` |
 | manner, place, voicing | `-tok -f=MANNER`, `-tok -f=PLACE`, `-tok -f=V` |
 
-### Word lists (`-wl`, `-pw`)
+### Lists of words and syllables (`-owl`, `-vrt`, `-sas`)
 
-`-wl` treats each line as a separate word or phrase. With `-pw` (`-phonword`), each output line is the input line, a TAB and its transcription: one output line for each input line.
+`-owl` writes one transcribed word per line, in the order of the text, and `-sas` (`-osl`) one syllable per line. A list has no pauses. Words are syllabified word by word. Syllables are cut from running text, as it is spoken, or with `-nosbu` from each word on its own; they carry no stress mark. `-vrt` is a word list with its own settings (stress as an accent on the vowel, one character per phoneme) and a default output file ending in `.vrt`; `-vrt -sas` is a syllable list with the same settings.
+
+```diff
+@@ perkins -nocfg -i=source.txt -owl @@
++ en
++ kon.sep.ˈsjon
++ se
++ ˈt̪ɾa.t̪a
+@@ perkins -nocfg -i=source.txt -vrt @@
++ en
++ kon.sep.sjón
++ se
++ tɾá.ta
+@@ perkins -nocfg -i=source.txt -sas @@
++ ses
++ d̪e
++ la
++ ɲo
+@@ perkins -nocfg -i=source.txt -sas -nosbu @@
++ ses
++ d̪el
++ a
++ ɲo
+```
+
+The `-sas` lines shown are the syllables of meses del año: across the words by default, word by word with `-nosbu`.
+
+### Word lists as input (`-wl`, `-pw`)
+
+`-wl` treats each line as a separate word or phrase. With `-pw` (`-phonword`), each output line is the input line, a TAB and its transcription: one output line for each input line. Without `-wl`, `-pw` writes one word per line, keeping its capital letters: Concepción, then a TAB and kon.sep.ˈsjon.
 
 ```diff
 @@ perkins -nocfg -i=words.txt -pw -wl @@
@@ -305,7 +333,7 @@ Each input line is one sentence, its tokens separated by TABs. Each output line 
 | `-rt`, `--corpus` | corpora of running text: accent on the vowel, one character per phoneme |
 | `-sl`, `--syl-list` | working with syllables: syllables separated by spaces, ' as the stress mark |
 | `-csc`, `--coscach` | the transcription conventions of the COSCACH and CODICACH corpora |
-| `-vrt` | verticalized text, one word per line (see [Known problems](#known-problems)) |
+| `-vrt` | a word list: one word per line, accent on the vowel, one character per phoneme |
 
 ```diff
 @@ perkins -nocfg -i=source.txt -rt @@
@@ -340,7 +368,7 @@ The same list, in English or Spanish, is shown by `perkins -h` (`perkins -h -es`
 | `-rt`, `--corpus` | corpora of running text |
 | `-sl`, `--syl-list` | work at the level of the syllable |
 | `-mfa` | an MFA pronunciation dictionary |
-| `-vrt` | verticalized text, one word per line |
+| `-vrt` | a word list (with `-sas`, a syllable list) with its own settings |
 | `-wl`, `--word-list` | word lists: syllables word by word |
 | `-csc`, `--coscach` | COSCACH transcriptions |
 
@@ -373,8 +401,8 @@ The same list, in English or Spanish, is shown by `perkins -h` (`perkins -h -es`
 | `-multi`, `-mc` | multi-character symbols for some phonemes (t͡ʃ); `-nomc` for one character each (ʧ) |
 | `-och` | ch is ʧ whatever the other settings |
 | `-tg` | tr is one phoneme: t͡ɾ with `-mc`, ʂ with `-nomc` |
-| `-yf` / `-ya` | ye is the fricative ʝ / the affricate ʤ (d͡ʒ with `-mc -lig`) |
-| `-oye` | ye is ʝ whatever the other settings |
+| `-yf` / `-ya` | ye is the fricative ʝ / the affricate ʤ |
+| `-oye` / `-nooye` | ye with one character (ʝ, ʤ) whatever the other settings (the default) / following them (d͡ʒ) |
 | `-ar` | the retracted diacritic in the affricates (t̠͡ʃ) |
 | `-lig` / `-nolig` | tie bars in t͡ʃ and d͡ʒ / none (with `-mc`) |
 | `-dd`, `--dent` | the dental diacritic on t and d (with `-mc`) |
@@ -402,7 +430,7 @@ The same list, in English or Spanish, is shown by `perkins -h` (`perkins -h -es`
 | `-ip`, `--ipa-pauses` | pauses as the IPA bars \| and ‖ (the default) |
 | `-lp2` | the long pause as \|\| |
 | `-cmp`, `-clp`, `-scp` | commas, colons, semicolons are pauses (the default) |
-| `-snp`, `-ppp` | sentence breaks, paragraph breaks are pauses (the default) |
+| `-snp`, `-ppp` | sentence breaks, paragraph breaks are pauses (the default); every input line keeps its own output line either way |
 | `-elp`, `-brp`, `-pnp` | ellipses, brackets, parentheses are pauses (the default) |
 | `--markers` / `--no-markers` | text in square brackets is a marker (the default) / is read |
 | `--marker-symbol=X` | what a marker becomes (default ???) |
@@ -426,8 +454,8 @@ The same list, in English or Spanish, is shown by `perkins -h` (`perkins -h -es`
 |---|---|
 | `-kp` | keep paragraph breaks |
 | `-tvd` | three or more identical vowels become two: nooo noo (the default) |
-| `-owl` | one word per line (see [Known problems](#known-problems)) |
-| `-sas`, `--split-syls` | one syllable per line (see [Known problems](#known-problems)) |
+| `-owl` | one word per line, no pauses |
+| `-sas`, `-osl`, `--split-syls` | one syllable per line, no pauses, no stress marks; across words, or word by word with `-nosbu` |
 
 ## The configuration file
 
@@ -466,13 +494,10 @@ When a release is published here, GitHub builds the five binaries and tests each
 ## Known problems
 
 > [!WARNING]
-> These are known and not yet fixed in 2.0.37:
+> These are known and not yet fixed in 2.0.38:
 >
-> - `-owl`, `-sas` (`--split-syls`) and `-vrt` write everything on one line instead of one word or syllable per line, and `-vrt` reads the `<s>` tags of a VRT file as words.
-> - `-osl` is listed by `perkins -h` but Perkins does not accept it.
-> - `-noelp` and `-nosnp` do not stop an ellipsis or a full stop from being a pause.
-> - With `-f=PLACE` a vowel is V, the same letter as a velar consonant.
-> - The examples printed by `perkins -u` are from an older version and do not all match what Perkins writes now; the examples on this page do.
+> - A single letter with a period is read as the letter's name, before anything else: p. m. and a. m. are pe eme and a eme, and i. e. is i e. EE. UU. is e ‖ u u.
+> - The period of an abbreviation is never a sentence end, even when it ends one: Vino el Sr. Luego se fue has no pause after se.ˈɲoɾ.
 
 ## Earlier versions
 

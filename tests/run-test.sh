@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION 1.6.0
+# VERSION 1.7.0
 #
 # run-test.sh -- checks a Perkins build against the expected outputs in this
 # folder. Usage: ./run-test.sh [PERKINS_COMMAND]
@@ -59,6 +59,20 @@ check pauses-nopi-narrow pauses.txt   expected/pauses-nopi-narrow.txt -nosbu -no
 check pauses-noclp-narrow pauses.txt  expected/pauses-noclp-narrow.txt -nosbu -noclp -noscp -nt
 check numbers-phonemic   numbers.txt  expected/numbers-phonemic.txt   -nosbu
 check numbers-tokens     numbers.tok  expected/numbers-tokens.txt     -tok
+check lists-words        lists.txt    expected/lists-words.txt        -owl
+check lists-vrt          lists.txt    expected/lists-vrt.txt          -vrt
+check lists-syllables    lists.txt    expected/lists-syllables.txt    -sas
+check lists-syllables-word lists.txt  expected/lists-syllables-word.txt -sas -nosbu
+check lists-vrt-syllables lists.txt   expected/lists-vrt-syllables.txt -vrt -sas
+check lists-lines        lists.txt    expected/lists-lines.txt        -nosbu -noppp
+check lists-phonword     lists.txt    expected/lists-phonword.txt     -phonword
+check lists-place        lists.txt    expected/lists-place.txt        -nosbu -f=PLACE
+check abbreviations      abbreviations.txt expected/abbreviations.txt -nosbu
+check ellipsis-phonemic  ellipsis.txt expected/ellipsis-phonemic.txt  -nosbu
+check ellipsis-noelp     ellipsis.txt expected/ellipsis-noelp.txt     -nosbu -noelp
+check ellipsis-nosnp     ellipsis.txt expected/ellipsis-nosnp.txt     -nosbu -nosnp
+check ellipsis-nopi-noelp ellipsis.txt expected/ellipsis-nopi-noelp.txt -nosbu -nopi -noelp
+check ellipsis-tokens-noelp ellipsis.tok expected/ellipsis-tokens-noelp.txt -tok -nt -noelp
 
 if [ "$fail" -eq 0 ]; then echo "ALL TESTS PASSED"; else echo "SOME TESTS FAILED"; fi
 exit "$fail"

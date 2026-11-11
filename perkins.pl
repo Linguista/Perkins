@@ -1,9 +1,10 @@
 #!/usr/bin/env perl
-# VERSION 2.0.37
+# VERSION 2.0.38
 
 use strict;
 use warnings;
 use File::Copy;                                 # Module for copying files. Used to replace output file with temp cleaned-up file.
+use File::Spec;                                 # Absolute paths, to tell whether -o= names the input file (Windows).
 use utf8;                                       # Required to process Unicode text (the phonetic symbols).
 use Encode;                                     # Module for dealing with different text encodings, such as UTF-8.
 use open qw(:std :encoding(UTF-8));
@@ -31,8 +32,8 @@ use Roman;                                      # Convert Roman numerals
 use Lingua::ES::Numeros;                        # Module to convert numerals to Spanish text.
 
 
-my $version = "2.0.37";
-# Released 2026-11-10
+my $version = "2.0.38";
+# Released 2026-11-11
 
 #######################################################################################
 #                                       Perkins                                       #
@@ -74,6 +75,51 @@ my $version = "2.0.37";
 #################################################################################
 
 # CHANGELOG VIS-A-VIS PERKINS 1.0.6
+#
+# v2.0.38 (2026-11-11)
+# - -owl (word list) and -sas or -osl (syllable list) write one word or one
+#     syllable per line, without pauses. They wrote everything on one line,
+#     with the words run together. The list is now cut from the finished
+#     transcription at the very end (write_list_output()), so the
+#     transcription itself runs as ordinary running text.
+# - A syllable list is cut from running text (sentence-level syllabification,
+#     the default: "del año" gives d̪e, la, ɲo) or, with -nosbu, from each
+#     word on its own (d̪el, a, ɲo). -sas used to switch sentence-level
+#     syllabification off. Syllable lists have no stress marks, as before.
+# - -vrt is a word list with its own settings (syllabified by word, stress
+#     marked with an accent, one character per phoneme); with -sas, a
+#     syllable list. It used to run a separate pipeline written for Connexor
+#     VRT input (TAB columns, placeholder characters), which wrote one line
+#     and syllabified kon.sep.si.ón and ak.si.ón. That pipeline is gone, and
+#     an input file ending in .vrt no longer selects -vrt by itself.
+# - -osl and -usl, listed by perkins -h, are accepted (the same as -sas).
+# - Every input line keeps its own output line. The line break came only
+#     from the paragraph pause (###), so with that pause off (-noppp, and the
+#     list modes) consecutive lines were glued, the last word of one onto
+#     the first word of the next.
+# - -nopel (-noelp) and -nosnp work: an ellipsis, or a full stop, question
+#     mark or exclamation mark, after a word is deleted instead of becoming a
+#     pause. Both did nothing in running text, and -nopel did nothing with
+#     --tokens. "?..." is an ellipsis, also with -nopi.
+# - The period of an abbreviation (Sr., Sra., art., Bs. As., no. 5) is not a
+#     sentence end. It was turned into one before the abbreviations were
+#     expanded, so "Sr. Pérez" was "esr ‖ ˈpe.ɾes" and "art. 5" "aɾt̪ ‖
+#     ˈsin.ko". "etc." becomes "etcétera" and keeps its period. In -mfa
+#     running-text dictionaries these words are now listed under their
+#     expansion (señór, artículo), as numerals already were.
+# - -f=PLACE writes a vowel as "-". It was V, the same letter as a velar.
+# - -phonword keeps the capital letters of the input in its orthographic
+#     column (Concepción, ÁRBOL, O'Higgins), as documented; it wrote them in
+#     lower case, and a word with a built-in pronunciation as its respelling
+#     (ojíguins). A full stop no longer adds a "##<TAB>##" line.
+# - The output file (-o=) may not be the input file: Perkins stops with an
+#     error, since opening the output file would erase the input. A default
+#     output name that would be the input file (-vrt on list.vrt) gets .out
+#     before its extension.
+# - perkins -u shows real output for every example, the current
+#     narrow-transcription rules, the -ya forms (/ʤ/; /d͡ʒ/ with -nooye) and
+#     the list modes. The voicing key had S and A swapped (S is voiced, A
+#     voiceless).
 #
 # v2.0.37 (2026-11-10)
 # - No change in what Perkins writes. Comments no longer name files and
@@ -4792,10 +4838,9 @@ our $phonword_format     = 0;    # Takes the orthographic word-level transcripti
 
 
 
-our $vrt_format          = 0;    # Select settings for generating one-word-per-line IMS Corpus Workbench-compatible
-                                 # vertical text (.vrt). Currently (381), Perkins only produces the transcribed form.
-                                 # This overrides most other settings to make sure that the corpus is processed
-                                 #uniformly, so turn it off to specify other options.
+our $vrt_format          = 0;    # The -vrt preset: a word list, one transcribed word per line (with -sas, one
+                                 # syllable per line), without pauses, syllabified by word, stress marked with
+                                 # an accent. It overrides most other settings, so turn it off to choose them.
 
 our $word_list           = 0;    # Select settings for producing output that is easy to process at the word level
                                  #   (syllables separated by a dot, words separated by a space). Doesn't itself
@@ -4938,6 +4983,9 @@ our $name_for_v    = "becórta";      # Name for letter "v" to be used when spel
 # USER OPTIONS - MISC                #
 our $keep_paragraphs          = 1;   # Keep paragraphs in the source text. Otherwise, output will be one big block.
 our $vertical_output          = 0;   # Output contains one word per line.
+our $list_mode                = '';  # Set in forcibly_set_variables(): 'words' (-owl, -vrt) or
+                                    # 'syllables' (-sas, -osl); the list is cut from the finished
+                                    # transcription by write_list_output().
 our $triple_vowels_to_double = 1;   # Reduce three or more identical vowels ("aaa", "eee", "iii", etc.) to two.
 
 
@@ -5731,7 +5779,7 @@ GetOptions(
      "ppc|scp!"                               => \$add_semicolon_pauses,       # Convert semicolons into pauses
      "ppn|pnp!"                               => \$add_paren_pauses,           # Convert parentheses into pauses
      "sn:s"                                   => \$num_symbol,                 # Replace numbers with this symbol
-     "split-syls|div-sil|sas|des!"            => \$split_at_syllables,         # Put each syllable on a line of its own
+     "split-syls|div-sil|sas|des|osl|usl!"    => \$split_at_syllables,         # Put each syllable on a line of its own
      "st|at!"                                 => \$stress_using_tildes,        # Represent stress with tilde, NOT IPA primary stress symbol
      "trg|tg!"                                => \$tr_is_group,                # Treat TR as a group of two phonemes
      "upl|owl|saw|dep|vo|split-words!"        => \$vertical_output,            # Output has one word per line
@@ -5938,13 +5986,6 @@ if ( $debug_to_logfile == 1 ) {
 &verify_cli_options;
 
 ############################################################################
-#      AUTOMATICALLY SELECT VRT FORMAT IF INPUT FILE ENDS IN ".VRT"        #
-############################################################################
-if ( $input_filename =~ m/\.vrt$/ ) {
-     $vrt_format = 1;
-}
-
-############################################################################
 # OPEN INPUT FILE, CREATE LOG FILE                                         #
 ############################################################################
 &open_input_and_log_files;
@@ -6127,7 +6168,7 @@ while (<INPUTFILE>) {
      $input_line = lc;
 
      # ── LINE-LEVEL PIPELINE ──────────────────────────────────────────────
-     # VRT stripping, era abbreviations, structured-token normalisation,
+     # Era abbreviations, structured-token normalisation,
      # numeral expansion, symbol conversion, and all other line-level
      # preprocessing.  See process_line() for stage order and rationale.
      $input_line = process_line($input_line);
@@ -6153,10 +6194,7 @@ while (<INPUTFILE>) {
 
           #print "\nBEF-CHANGE-¬-TO-SPACE :$word\n";           # AD-HOC DEBUG
 
-          # Change ¬ to space (for VRT format). If the ¬ is not inserted previously, #
-          # then the above split will break up VRT lines into one word per line,     #
-          # utterly mangling the output file's line-by-line correspondence to the    #
-          # input .vrt file.                                                         #
+          # Change ¬ to space.                                                       #
           $word =~ s/¬/ /g;
 
           #print "AFT-CHANGE-¬-TO-SPACE :$word\n";           # AD-HOC DEBUG
@@ -6408,6 +6446,14 @@ while (<INPUTFILE>) {
           next;
      }
      else {
+          # -phonword: each orthographic word gets back the capital letters it
+          # had in the input ("Concepción", not "concepción"), as documented.
+          # It used to come out in lower case, because the pipeline works in
+          # lower case. See restore_ortho_case().
+          if ( $phonword_format == 1 ) {
+               restore_ortho_case( \@output_ortho, $mfa_original_line );
+          }
+
           foreach my $i ( 0 .. $#output_words ) {
                # -phonword exits before Stage 2 (like -mfa), so it never
                # reaches the sentinel-to-‖ conversion there -- skip the
@@ -6418,6 +6464,12 @@ while (<INPUTFILE>) {
                # already correctly converted -- so this skip must be
                # scoped to $phonword_format only, not applied generally.
                next if ( $phonword_format == 1 && $output_words[$i] eq '[UtteranceBoundary]' );
+
+               # Nor any other pause symbol. -phonword switches the IPA pause
+               # symbols off, so a full stop came through as the sentence
+               # break ## and used to be printed as a word of its own,
+               # "##<TAB>##".
+               next if ( $phonword_format == 1 && $output_words[$i] =~ /^(?:[|‖]+|\(\.{1,3}\)|#{2,3})$/ );
 
                my $formatted = format_output_word($output_words[$i], $output_ortho[$i]);
                next unless defined $formatted;
@@ -6683,9 +6735,13 @@ while (<OUTPUTFILE>) {
 
      #######################################################################
      # Print each cleaned-up line to the temporary file, in Unicode NFC    #
-     # (see nfc_output_file()).                                            #
+     # (see nfc_output_file()), with its own line break. The line break    #
+     # used to come only from the paragraph pause (###), so with that      #
+     # pause off (-noppp, -owl, -vrt, -sas) consecutive lines were glued    #
+     # together, the last word of one onto the first word of the next.     #
      #######################################################################
-     print TEMPFILE Unicode::Normalize::NFC($input_line);
+     $input_line =~ s/\s+$//;
+     print TEMPFILE Unicode::Normalize::NFC($input_line), "\n";
 
 }
 
@@ -6702,6 +6758,11 @@ copy( "$output_filename\.cleaned", "$output_filename" )
   or die " ***** Copying of cleaned file to output file failed! *****\n";
 
 unlink("$output_filename\.cleaned");    # Deletes de file from disk
+
+#################################################################################
+# ONE WORD OR ONE SYLLABLE PER LINE (-owl, -vrt, -sas, -osl)                    #
+#################################################################################
+write_list_output($output_filename) if $list_mode ne '';
 
 #################################################################################
 # PRINT FINAL MESSAGE TELLING WHAT FILE THE TRANSCRIPTION IS IN                 #
@@ -6854,9 +6915,9 @@ sub print_help {
           print STDOUT "\n                               pueden procesarse fácilmente a nivel de sílaba.";
           print STDOUT "\n " . color_flags("-mfa") . "                          Configuración para generar un diccionario Grafema-a-Fonema (MFA),";
           print STDOUT "\n                               compatible con herramientas como el Montreal Forced Aligner.";
-          print STDOUT "\n " . color_flags("-vrt") . "                          Configuración para generar archivos verticales (.vrt)";
-          print STDOUT "\n                               compatibles con IMS CWB. No puede realizar todos los";
-          print STDOUT "\n                               análisis (e.g. expansión de abreviaturas).";
+          print STDOUT "\n " . color_flags("-vrt") . "                          Lista de palabras: una palabra transcrita por línea,";
+          print STDOUT "\n                               sin pausas, silabificada por palabra, con el acento";
+          print STDOUT "\n                               marcado con tilde. Con -des, una sílaba por línea.";
           print STDOUT "\n " . color_flags("-lp, --lista-pal") . "              Configuración que trata el texto como una lista de";
           print STDOUT "\n                               palabras: silabiza a nivel de palabra en vez de";
           print STDOUT "\n                               enunciado.";
@@ -6961,8 +7022,9 @@ sub print_help {
           print STDOUT "\n                               hombres\" > /lo.som.bres/ en vez de /los om.bres/).";
           print STDOUT "\n " . color_flags("-nospe") . "                        Silabificar por palabra, y no por enunciado/oración (\"los";
           print STDOUT "\n                               hombres\" > /los om.bres/ en vez de /lo.som.bres/).";
-          print STDOUT "\n " . color_flags("-des, --div-sil") . "               Poner un salto de línea en cada división silábica (una";
-          print STDOUT "\n                               sílaba por línea).";
+          print STDOUT "\n " . color_flags("-des, --div-sil") . "               Una sílaba por línea, sin pausas ni acento. Las sílabas";
+          print STDOUT "\n                               se cortan del texto corrido (con -spe, por defecto) o de";
+          print STDOUT "\n                               cada palabra por separado (con -nospe).";
           print STDOUT "\n";
           print STDOUT "\n" . color_header("OPCIONES PARA LAS PAUSAS:");
           print STDOUT "\n " . color_flags("-pi, --pausas-afi") . "             Representar pausas con los símbolos AFI | y ‖";
@@ -7003,8 +7065,8 @@ sub print_help {
           print STDOUT "\n                               De lo contrario, éstas se suprimen.";
           print STDOUT "\n";
           print STDOUT "\n" . color_header("OPCIONES DE PRESENTACIÓN:");
-          print STDOUT "\n " . color_flags("-upl") . "                          Una palabra por línea (dividir en palabras).";
-          print STDOUT "\n " . color_flags("-usl") . "                          Una sílaba por línea (dividir en sílabas).";
+          print STDOUT "\n " . color_flags("-upl") . "                          Una palabra por línea, sin pausas (silabificada por palabra).";
+          print STDOUT "\n " . color_flags("-usl") . "                          Una sílaba por línea, sin pausas (lo mismo que -des).";
           print STDOUT "\n " . color_flags("-mp") . "                           Mantener la separación de párrafos. De lo contrario";
           print STDOUT "\n                               la transcripción será un solo gran muro de texto.";
           print STDOUT "\n " . color_flags("-epc") . "                          Eliminar palabras comunes (para fines de testeo).";
@@ -7052,8 +7114,9 @@ sub print_help {
           print STDOUT "\n                               syllable level.";
           print STDOUT "\n " . color_flags("-mfa") . "                          For generating a Grapheme-to-Phoneme (MFA) dictionary, compatible";
           print STDOUT "\n                               with tools such as the Montreal Forced Aligner (MFA).";
-          print STDOUT "\n " . color_flags("-vrt") . "                          For processing verticalized text (one word per line of input). Can't";
-          print STDOUT "\n                               perform all analyses (e.g. expanding abbreviations).";
+          print STDOUT "\n " . color_flags("-vrt") . "                          Word list: one transcribed word per line, without";
+          print STDOUT "\n                               pauses, syllabified by word, stress marked with an";
+          print STDOUT "\n                               accent. With -sas, one syllable per line.";
           print STDOUT "\n " . color_flags("-wl, --word-list") . "              For processing word lists (syllabifies at word level, not sentence level).";
           print STDOUT "\n " . color_flags("-csc, --coscach") . "               For processing Coscach transcriptions.";
           print STDOUT "\n";
@@ -7149,7 +7212,9 @@ sub print_help {
           print STDOUT "\n                               hombres\" becomes /lo.som.bres/ instead of /los om.bres/).";
           print STDOUT "\n " . color_flags("-nosbu") . "                        Syllabify by word, not by utterance/sentence (\"los";
           print STDOUT "\n                               hombres\" > /los om.bres/ instead of /lo.som.bres/).";
-          print STDOUT "\n " . color_flags("-sas, --split-syls") . "            Put a newline at each syllable break (one syllable per line).";
+          print STDOUT "\n " . color_flags("-sas, --split-syls") . "            One syllable per line, without pauses or stress marks. The";
+          print STDOUT "\n                               syllables are cut from running text (with -sbu, the";
+          print STDOUT "\n                               default) or from each word on its own (with -nosbu).";
           print STDOUT "\n";
           print STDOUT "\n" . color_header("PAUSE AND GROUP OPTIONS:");
           print STDOUT "\n " . color_flags("-ip, --ipa-pauses") . "             Represent pauses with the IPA symbols | and  ||";
@@ -7189,8 +7254,8 @@ sub print_help {
           print STDOUT "\n                               deleted.";
           print STDOUT "\n";
           print STDOUT "\n" . color_header("PRESENTATION OPTIONS:");
-          print STDOUT "\n " . color_flags("-owl") . "                          One word per line (split at words).";
-          print STDOUT "\n " . color_flags("-osl") . "                          One syllable per line (split at syllables).";
+          print STDOUT "\n " . color_flags("-owl") . "                          One word per line, without pauses (syllabified by word).";
+          print STDOUT "\n " . color_flags("-osl") . "                          One syllable per line, without pauses (same as -sas).";
           print STDOUT "\n " . color_flags("-kp") . "                           Keep paragraph breaks. Otherwise, output will be a wall of text.";
           print STDOUT "\n " . color_flags("-kc") . "                           Eliminate common words (for testing purposes).";
           print STDOUT "\n " . color_flags("-tvd") . "                          Reduce 3+ identical consecutive vowels down to 2";
@@ -7242,136 +7307,136 @@ sub print_usage {
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈʝu.bja.";
-          print STDOUT "\n              d̪u.ˈɾan.t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
+          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈʝu.bja.d̪u.ˈɾan.";
+          print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Opciones preconfiguradas. Transcripción fonémica. Africadas con";
-          print STDOUT "\n              ligadura. Yod y wau son /j/ y /w/. Apóstrofo AFI. Dentales con";
-          print STDOUT "\n              diacrítico. Símbolos de múltiples caracteres (t͡ʃ). Procesamiento";
-          print STDOUT "\n              a nivel de enunciado. Fonema \"ye\" es /ʝ/.";
+          print STDOUT "\nDESCRIPCIÓN:  Opciones por defecto. Transcripción fonémica, silabificada por";
+          print STDOUT "\n              enunciado (las sílabas cruzan los límites de palabra). Acento con";
+          print STDOUT "\n              el apóstrofo AFI. Africadas con ligadura, dentales con";
+          print STDOUT "\n              diacrítico, yod y wau como /j/ y /w/, el fonema \"ye\" como /ʝ/.";
+          print STDOUT "\n              | es una pausa corta (una coma) y ‖ una larga (el fin de una";
+          print STDOUT "\n              oración).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -at";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en.kon.sep.sjón | se.t̪ɾá.t̪a.d̪e.a.gwan.t̪áɾ.la.ʝú.bja.d̪u.ɾán.t̪e.sín.";
-          print STDOUT "\n              ko.mé.ses.d̪e.lá.ɲo ‖ ka.t͡ʃáj";
+          print STDOUT "\nSALIDA:       en.kon.sep.sjón | se.t̪ɾá.t̪a.d̪e.a.ɡwan.t̪áɾ.la.ʝú.bja.d̪u.ɾán.t̪e.";
+          print STDOUT "\n              sín.ko.mé.ses.d̪e.lá.ɲo ‖ ka.t͡ʃáj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  El acento tónico se señala con tildes sobre las vocales tónicas";
-          print STDOUT "\n              en vez de apóstrofos AFI.";
+          print STDOUT "\nDESCRIPCIÓN:  El acento se marca con tilde sobre la vocal tónica, en vez del";
+          print STDOUT "\n              apóstrofo AFI.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -nt";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       ẽŋ.kõn.sep.ˈsjõn.se.ˈt̪ɾa.t̪a.ð̞e.a.ɡwãn̪.ˈt̪aɾ.la.ˈʝu.bja.ð̞u.ˈɾãn̪.t̪e.ˈsĩŋ.";
-          print STDOUT "\n              kõ.ˈmẽ.ses.d̪e.ˈlã.ɲõ.ka.ˈt͡ʃaj";
+          print STDOUT "\nSALIDA:       ẽŋ.kõn.sep.ˈsjõn | se.ˈt̪ɾa.t̪a.ð̞e.a.ɣ̞wãn̪.ˈt̪aɾ.la.ˈʝu.ʋja.ð̞u.ˈɾãn̪.";
+          print STDOUT "\n              t̪e.ˈsĩŋ.kõ.ˈmẽ.ses.ð̞e.ˈlã.ɲõ ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Transcripción estrecha del español chileno, aplicada sobre el modo";
-          print STDOUT "\n              de transcripción actual (aquí, el fonémico por defecto). Nótese la";
-          print STDOUT "\n              espirantización de /b/, /d/ y /g/ entre vocales -- incluso cruzando";
-          print STDOUT "\n              límites de palabra (\"trata de\" > \"t̪ɾa.t̪a.ð̞e\"; \"lluvia durante\" >";
-          print STDOUT "\n              \"bja.ð̞u\") -- pero NO tras consonante (\"del\" > \"d̪e\", ya que la \"s\"";
-          print STDOUT "\n              de \"meses\" no es vocal); la asimilación de punto de articulación";
-          print STDOUT "\n              nasal ante velar, dental y palatal (\"concepción\" > \"kõn\" con /n/";
-          print STDOUT "\n              inalterada ante /s/ alveolar; \"cinco\" > \"sĩŋko\" con /n/ > /ŋ/ ante";
-          print STDOUT "\n              velar; \"aguantar\" > \"ɡwãn̪tar\" con /n/ > /n̪/ ante dental; \"año\" >";
-          print STDOUT "\n              \"lãɲõ\" con /n/ > /ɲ/ palatal); y la nasalización vocálica en";
-          print STDOUT "\n              contacto directo de un segmento con cualquier nasal, en cualquier";
-          print STDOUT "\n              dirección. Para el detalle completo de cada regla, véase el README";
-          print STDOUT "\n              del narrow-transcription-ruleset.";
+          print STDOUT "\nDESCRIPCIÓN:  Transcripción estrecha del español de Chile, aplicada sobre el";
+          print STDOUT "\n              modo actual (aquí, el fonémico). /b d g/ son oclusivas tras";
+          print STDOUT "\n              pausa, tras nasal y, /d/, tras /l/; en los demás casos son";
+          print STDOUT "\n              aproximantes o fricativas, también entre palabras: \"trata de\"";
+          print STDOUT "\n              t̪ɾa.t̪a.ð̞e, \"lluvia\" ʝu.ʋja, \"aguantar\" a.ɣ̞wan, \"meses del\"";
+          print STDOUT "\n              mẽ.ses.ð̞e. La /n/ toma el punto de articulación de la consonante";
+          print STDOUT "\n              siguiente (\"cinco\" sĩŋ.kõ, \"aguantar\" ɣ̞wãn̪.t̪aɾ) y una vocal junto";
+          print STDOUT "\n              a una consonante nasal se nasaliza. Cada regla se detalla en";
+          print STDOUT "\n              perkins-narrow-transcription-ruleset_README.md.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -ya";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈd͡ʒu.bja.d̪u.ˈɾan.";
+          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈʤu.bja.d̪u.ˈɾan.";
           print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  El fonema \"ye\" se representa como la africada /d͡ʒ/.";
+          print STDOUT "\nDESCRIPCIÓN:  El fonema \"ye\" es la africada /ʤ/. Con -nooye se escribe /d͡ʒ/,";
+          print STDOUT "\n              con ligadura, como /t͡ʃ/.";
           print STDOUT "\n-------------------------------------------------------------------------------";
-          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -ya -ar";
+          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -ya -nooye -ar";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈd̠͡ʒu.bja.d̪u.ˈɾan.";
+          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈd̠͡ʒu.bja.d̪u.ˈɾan.";
           print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt̠͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Se utiliza el diacrítico \"retraído\" en la representación de las";
-          print STDOUT "\n              dos africados (/d̠͡ʒ/ y /t̠͡ʃ/).";
+          print STDOUT "\nDESCRIPCIÓN:  Las dos africadas llevan el diacrítico de retracción (/d̠͡ʒ/ y";
+          print STDOUT "\n              /t̠͡ʃ/).";
           print STDOUT "\n-------------------------------------------------------------------------------";
-          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -ya -tg";
+          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -tg";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪͡ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈd͡ʒu.bja.d̪u.ˈɾan.";
+          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈt̪͡ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈʝu.bja.d̪u.ˈɾan.";
           print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Se trata el grupo \"tr\" como fonema (tal como se comporta en";
-          print STDOUT "\n              muchos hablantes chilenos).";
+          print STDOUT "\nDESCRIPCIÓN:  El grupo \"tr\" se trata como un solo fonema (/t̪͡ɾ/), como ocurre en";
+          print STDOUT "\n              muchos hablantes chilenos.";
           print STDOUT "\n-------------------------------------------------------------------------------";
-          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -ya -tg -nomc";
+          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -tg -nomc";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈʂa.ta.de.a.gwan.ˈtaɾ.la.ˈʤu.bja.du.ˈɾan.te.";
-          print STDOUT "\n              ˈsin.ko.ˈme.ses.de.ˈla.ɲo ‖ ka.ˈʧaj";
+          print STDOUT "\nSALIDA:       en.kon.sep.ˈsjon | se.ˈʂa.ta.de.a.ɡwan.ˈtaɾ.la.ˈʝu.bja.du.ˈɾan.";
+          print STDOUT "\n              te.ˈsin.ko.ˈme.ses.de.ˈla.ɲo ‖ ka.ˈʧaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Los fonemas se representan con símbolos de un solo carácter (/ʤ/; ";
-          print STDOUT "\n              /ʧ/; /ʂ/ en vez de /t̪͡ɾ/), salvo los glides, que pueden configurarse";
-          print STDOUT "\n              por separado con \'-gd\' y \'-nogd\'.";
+          print STDOUT "\nDESCRIPCIÓN:  Cada fonema se escribe con un solo carácter: /ʂ/ en vez de /t̪͡ɾ/,";
+          print STDOUT "\n              /ʧ/ en vez de /t͡ʃ/, y /t/ y /d/ sin el diacrítico dental. Los";
+          print STDOUT "\n              glides se configuran aparte, con -gd y -nogd.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -gd";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en.kon.sep.ˈsi̯on | se.ˈt̪ɾa.t̪a.d̪e.a.gu̯an.ˈt̪aɾ.la.ˈʝu.bi̯a.d̪u.ˈɾan.t̪e.";
-          print STDOUT "\n              ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃai̯";
+          print STDOUT "\nSALIDA:       en.kon.sep.ˈsi̯on | se.ˈt̪ɾa.t̪a.d̪e.a.ɡu̯an.ˈt̪aɾ.la.ˈʝu.bi̯a.d̪u.ˈɾan.";
+          print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃai̯";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Representar los glides (semivocales) como vocal + diacrítco";
-          print STDOUT "\n              \"no silábico\" (/i̯/, /u̯/) en vez de /j/ y /w/.";
+          print STDOUT "\nDESCRIPCIÓN:  Los glides se escriben como vocal + diacrítico no silábico (/i̯/,";
+          print STDOUT "\n              /u̯/) en vez de /j/ y /w/.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -nospe";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en kon.sep.ˈsjon | se ˈt̪ɾa.t̪a d̪e a.gwan.ˈt̪aɾ la ˈʝu.bja d̪u.ˈɾan.t̪e";
-          print STDOUT "\n              ˈsin.ko ˈme.ses d̪el ˈa.ɲo ‖ ka.ˈt͡ʃaj";
+          print STDOUT "\nSALIDA:       en kon.sep.ˈsjon | se ˈt̪ɾa.t̪a d̪e a.ɡwan.ˈt̪aɾ la ˈʝu.bja d̪u.ˈɾan.";
+          print STDOUT "\n              t̪e ˈsin.ko ˈme.ses d̪el ˈa.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Silabizar a nivel de palabra, y no enunciado/oración.";
+          print STDOUT "\nDESCRIPCIÓN:  Silabificación por palabra y no por enunciado: las sílabas no";
+          print STDOUT "\n              cruzan los límites de palabra (\"del año\" d̪el ˈa.ɲo, y no";
+          print STDOUT "\n              d̪e.ˈla.ɲo).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -cv";
           print STDOUT "\n";
           print STDOUT "\nSALIDA:       VC.CVC.CVC.ˈCVVC | CV.ˈCCV.CV.CV.V.CVVC.ˈCVC.CV.ˈCV.CVV.CV.ˈCVC.";
-          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CVC.ˈV.CV ‖ CV.ˈCVV";
+          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CV.ˈCV.CV ‖ CV.ˈCVV";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Analizar el texto fuente en términos de consonantes y vocales.";
+          print STDOUT "\nDESCRIPCIÓN:  Consonantes (C) y vocales (V).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -cvg";
           print STDOUT "\n";
           print STDOUT "\nSALIDA:       VC.CVC.CVC.ˈCGVC | CV.ˈCCV.CV.CV.V.CGVC.ˈCVC.CV.ˈCV.CGV.CV.ˈCVC.";
-          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CVC.ˈV.CV ‖ CV.ˈCVG";
+          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CV.ˈCV.CV ‖ CV.ˈCVG";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Analizar el texto fuente en términos de consonantes, vocales y";
-          print STDOUT "\n              glides";
+          print STDOUT "\nDESCRIPCIÓN:  Consonantes (C), vocales (V) y glides (G).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -cvn";
           print STDOUT "\n";
           print STDOUT "\nSALIDA:       VN.CVN.CVC.ˈCGVN | CV.ˈCRV.CV.CV.V.CGVN.ˈCVR.LV.ˈCV.CGV.CV.ˈRVN.";
-          print STDOUT "\n              CV.ˈCVN.CV.ˈNV.CVC.CVL.ˈV.NV ‖ CV.ˈCVG";
+          print STDOUT "\n              CV.ˈCVN.CV.ˈNV.CVC.CV.ˈLV.NV ‖ CV.ˈCVG";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Analizar el texto fuente en términos de consonantes, vocales,";
-          print STDOUT "\n              glides, nasales, líquidas y róticas.";
+          print STDOUT "\nDESCRIPCIÓN:  N = nasal, L = lateral, R = rótica, G = glide, V = vocal, C = las";
+          print STDOUT "\n              demás consonantes.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -m";
           print STDOUT "\n";
           print STDOUT "\nSALIDA:       VN.PVN.FVP.ˈFXVN | FV.ˈPTV.PV.PV.V.PXVN.ˈPVT.LV.ˈFV.PXV.PV.ˈTVN.";
-          print STDOUT "\n              PV.ˈFVN.PV.ˈNV.FVF.PVL.ˈV.NV ‖ PV.ˈAVX";
+          print STDOUT "\n              PV.ˈFVN.PV.ˈNV.FVF.PV.ˈLV.NV ‖ PV.ˈAVX";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Analizar el texto fuente en términos de los MODOS de articulación";
-          print STDOUT "\n              (P=plosiva, N=nasal, R=multivibrante, T=vibrante simple,";
-          print STDOUT "\n              F=fricativa, L=lateral, A=africada, X=aproximante, V=vocal).";
+          print STDOUT "\nDESCRIPCIÓN:  Modos de articulación: P = oclusiva, N = nasal, R = vibrante";
+          print STDOUT "\n              múltiple, T = vibrante simple, F = fricativa, L = lateral,";
+          print STDOUT "\n              A = africada, X = aproximante, V = vocal.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -p";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.D-.";
-          print STDOUT "\n              ˈA-A.V-.ˈB-.A-A.D-A.ˈ-.P- ‖ V-.ˈT-P";
+          print STDOUT "\nSALIDA:       -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.";
+          print STDOUT "\n              D-.ˈA-A.V-.ˈB-.A-A.D-.ˈA-.P- ‖ V-.ˈT-P";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Analizar el texto fuente en términos de los PUNTOS de articulación";
-          print STDOUT "\n              (B=bilabial, L=labiodental, D=dental, A=alveolar, T=postalveolar, ";
-          print STDOUT "\n              P=palatal, V=velar, W=labiovelar, -=vocal).";
+          print STDOUT "\nDESCRIPCIÓN:  Puntos de articulación: B = bilabial, L = labiodental,";
+          print STDOUT "\n              D = dental, A = alveolar, T = postalveolar, P = palatal,";
+          print STDOUT "\n              V = velar, W = labiovelar, - = vocal. \"tr\" es DA (dental y";
+          print STDOUT "\n              alveolar); con -tg, A.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -voicing";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       SS.ASS.ASA.ˈASSS.AS.ˈASS.AS.SS.S.SSSS.ˈASS.SS.ˈSS.SSS.SS.ˈSSS.AS.ˈSAA.SA.";
-          print STDOUT "\n              ˈSS.ASA.SS.ˈSS.SS.AS.ˈASS";
+          print STDOUT "\nSALIDA:       SS.ASS.ASA.ˈASSS | AS.ˈASS.AS.SS.S.SSSS.ˈASS.SS.ˈSS.SSS.SS.ˈSSS.";
+          print STDOUT "\n              AS.ˈASS.AS.ˈSS.ASA.SS.ˈSS.SS ‖ AS.ˈASS";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Analizar el texto fuente en términos de sonoridad (S=sorda,";
-          print STDOUT "\n              A=sonora, incluyendo todas las vocales).";
+          print STDOUT "\nDESCRIPCIÓN:  Sonoridad: S = sonora (todas las vocales lo son), A = sorda.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\n";
           print STDOUT "\nSEPARADOR DECIMAL (--decimal-period / --decimal-comma):";
@@ -7380,71 +7445,134 @@ sub print_usage {
           print STDOUT "\n";
           print STDOUT "\nCOMANDO:      $progname -i=fuente2.txt";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       el.t̪o.ˈt̪a.les.ˈd̪o.se.ˈpe.sos.kon.ˈt̪ɾejn.ta.i.ˈsin.ko.sen.ˈt̪a.bos";
+          print STDOUT "\nSALIDA:       el.t̪o.ˈt̪a.les.ˈd̪o.se.ˈpe.sos.kon.ˈt̪ɾejn.t̪a.i.ˈsin.ko.sen.ˈt̪a.bos";
           print STDOUT "\n";
           print STDOUT "\nDESCRIPCIÓN:  Por defecto (--decimal-comma), la coma es el separador decimal:";
           print STDOUT "\n              \"12,35\" son doce pesos con treinta y cinco centavos.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente2.txt --decimal-period";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       el.t̪o.ˈt̪a.les.mil.d̪os.ˈsjen.tos.ˈt̪ɾejn.ta.i.ˈsin.ko.ˈpe.sos";
+          print STDOUT "\nSALIDA:       el.t̪o.ˈt̪a.les.mil.d̪o.ˈsjen.t̪os.ˈt̪ɾejn.t̪a.i.ˈsin.ko.ˈpe.sos";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Con --decimal-period, el punto pasa a ser el separador decimal";
-          print STDOUT "\n              y la coma el separador de miles: \"12,35\" se lee como \"1235\",";
-          print STDOUT "\n              es decir, mil doscientos treinta y cinco pesos.";
+          print STDOUT "\nDESCRIPCIÓN:  Con --decimal-period, el punto pasa a ser el separador decimal y";
+          print STDOUT "\n              la coma el de miles: \"12,35\" se lee como 1235, es decir, mil";
+          print STDOUT "\n              doscientos treinta y cinco pesos.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\n";
-          print STDOUT "\nOTRAS METACONFIGURACIONES:";
-          print STDOUT "\n(Usando el mismo texto fuente original de más arriba)";
+          print STDOUT "\nLISTAS Y OTRAS METACONFIGURACIONES:";
+          print STDOUT "\n(Con el mismo texto fuente de más arriba)";
           print STDOUT "\n";
+          print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -mfa";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       Diccionario Grafema-a-Fonema, una entrada por palabra, con los";
-          print STDOUT "\n              fonemas separados por espacios (compatible con el Montreal";
-          print STDOUT "\n              Forced Aligner). Por ejemplo:";
+          print STDOUT "\nSALIDA:       Diccionario Grafema-a-Fonema (Montreal Forced Aligner):";
+          print STDOUT "\n              una entrada por palabra, en orden alfabético, sin repetir.";
           print STDOUT "\n";
-          print STDOUT "\n                concepción\tk o n s e p s j o n";
-          print STDOUT "\n                aguantar\ta ɡ w a n t̪ a ɾ";
-          print STDOUT "\n                cinco\ts i n k o";
+          print STDOUT "\n                aguantar     a ɡ w a n t̪ a ɾ";
+          print STDOUT "\n                año          a ɲ o";
+          print STDOUT "\n                concepción   k o n s e p s j o n";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPCIÓN:  Los fonemas van separados por espacios, sin acento ni sílabas.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -phonword";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       Una palabra por línea, como \"Ortográfica<TAB>tran.scrip.ción\"";
-          print STDOUT "\n              (con tildes conservadas en la columna ortográfica). Por ejemplo:";
+          print STDOUT "\nSALIDA:       Una palabra por línea, \"Ortográfica<TAB>transcripción\":";
           print STDOUT "\n";
-          print STDOUT "\n                concepción\tkon.sep.ˈsjon";
-          print STDOUT "\n                cachái\tka.ˈt͡ʃaj";
+          print STDOUT "\n                Concepción   kon.sep.ˈsjon";
+          print STDOUT "\n                trata        ˈt̪ɾa.t̪a";
+          print STDOUT "\n                Cachái       ka.ˈt͡ʃaj";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPCIÓN:  Para las capas de palabras de Praat. La columna ortográfica";
+          print STDOUT "\n              conserva mayúsculas y tildes; la transcripción, sílabas y acento.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -vrt";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en kon.sep.si.ón se tɾá.ta de a.gwan.táɾ la ʝú.bja du.ɾán.te sín.ko";
-          print STDOUT "\n              mé.ses del á.ɲo ka.ʧáj";
+          print STDOUT "\nSALIDA:       en";
+          print STDOUT "\n              kon.sep.sjón";
+          print STDOUT "\n              se";
+          print STDOUT "\n              tɾá.ta";
+          print STDOUT "\n              de";
+          print STDOUT "\n              a.ɡwan.táɾ";
+          print STDOUT "\n              (...)";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Para procesar texto verticalizado (una palabra de entrada por";
-          print STDOUT "\n              línea), compatible con IMS Corpus Workbench. Silabiza a nivel";
-          print STDOUT "\n              de palabra, no de enunciado.";
+          print STDOUT "\nDESCRIPCIÓN:  Lista de palabras: una palabra transcrita por línea, en el orden";
+          print STDOUT "\n              del texto, sin pausas. Silabifica por palabra, marca el acento";
+          print STDOUT "\n              con tilde y usa un solo carácter por fonema, sin diacríticos";
+          print STDOUT "\n              dentales. El archivo de salida por defecto termina en .vrt. Con";
+          print STDOUT "\n              -des, una sílaba por línea.";
+          print STDOUT "\n-------------------------------------------------------------------------------";
+          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -owl";
+          print STDOUT "\n";
+          print STDOUT "\nSALIDA:       en";
+          print STDOUT "\n              kon.sep.ˈsjon";
+          print STDOUT "\n              se";
+          print STDOUT "\n              ˈt̪ɾa.t̪a";
+          print STDOUT "\n              d̪e";
+          print STDOUT "\n              a.ɡwan.ˈt̪aɾ";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPCIÓN:  Una palabra por línea, sin pausas, con las demás opciones";
+          print STDOUT "\n              vigentes (aquí, las por defecto). Silabifica por palabra.";
+          print STDOUT "\n-------------------------------------------------------------------------------";
+          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -sas";
+          print STDOUT "\n";
+          print STDOUT "\nSALIDA:       en";
+          print STDOUT "\n              kon";
+          print STDOUT "\n              sep";
+          print STDOUT "\n              sjon";
+          print STDOUT "\n              se";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n              ses";
+          print STDOUT "\n              d̪e";
+          print STDOUT "\n              la";
+          print STDOUT "\n              ɲo";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPCIÓN:  Una sílaba por línea, sin pausas ni acento, cortadas del texto";
+          print STDOUT "\n              corrido: con la silabificación por enunciado (por defecto), \"del";
+          print STDOUT "\n              año\" da d̪e, la, ɲo.";
+          print STDOUT "\n-------------------------------------------------------------------------------";
+          print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -sas -nospe";
+          print STDOUT "\n";
+          print STDOUT "\nSALIDA:       en";
+          print STDOUT "\n              kon";
+          print STDOUT "\n              sep";
+          print STDOUT "\n              sjon";
+          print STDOUT "\n              se";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n              ses";
+          print STDOUT "\n              d̪el";
+          print STDOUT "\n              a";
+          print STDOUT "\n              ɲo";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPCIÓN:  Las sílabas se cortan de cada palabra por separado: \"del año\" da";
+          print STDOUT "\n              d̪el, a, ɲo. -osl es lo mismo que -sas.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -syl-list";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en kon sep 'sjon se 'ʂa ta de a gwan 'taɾ la 'ʝu bja du 'ɾan te";
-          print STDOUT "\n              'sin ko 'me ses de 'la ɲo ka 'ʧaj";
+          print STDOUT "\nSALIDA:       en kon sep 'sjon | se 'ʂa ta de a ɡwan 'taɾ la 'ʝu bja du 'ɾan te";
+          print STDOUT "\n              'sin ko 'me ses de 'la ɲo ‖ ka 'ʧaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Para generar transcripciones fáciles de procesar a nivel de";
-          print STDOUT "\n              sílaba: sílabas separadas por espacios, acento con apóstrofo.";
+          print STDOUT "\nDESCRIPCIÓN:  Para procesar el texto a nivel de sílaba: sílabas separadas por";
+          print STDOUT "\n              espacios, acento con apóstrofo, \"tr\" como un solo fonema.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -coscach";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       en kon sep sjón se tɾá ta de a gwan táɾ la ʝú bja du ɾán te";
-          print STDOUT "\n              sín ko mé ses de lá ɲo ka tʃáj";
+          print STDOUT "\nSALIDA:       en kon sep sjón | se tɾá ta de a ɡwan táɾ la ʝú bja du ɾán te sín";
+          print STDOUT "\n              ko mé ses de lá ɲo || ka tʃáj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Configuración ajustada a las convenciones del corpus COSCACH/";
-          print STDOUT "\n              CODICACH: acento con tilde, sílabas separadas por espacios.";
+          print STDOUT "\nDESCRIPCIÓN:  Las convenciones del corpus COSCACH: acento con tilde, sílabas";
+          print STDOUT "\n              separadas por espacios, la pausa larga como ||.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -word-list";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPCIÓN:  Para procesar listas de palabras: silabiza a nivel de palabra";
-          print STDOUT "\n              en vez de enunciado (útil para listas donde cada línea es una";
-          print STDOUT "\n              palabra independiente, no una oración).";
+          print STDOUT "\nSALIDA:       en kon.sep.ˈsjon | se ˈtɾa.ta de a.ɡwan.ˈtaɾ la ˈʝu.bja du.ˈɾan.";
+          print STDOUT "\n              te ˈsin.ko ˈme.ses del ˈa.ɲo ‖ ka.ˈʧaj";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPCIÓN:  Para listas de palabras en las que cada línea es una palabra y no";
+          print STDOUT "\n              una oración: silabifica por palabra, con un solo carácter por";
+          print STDOUT "\n              fonema.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\n";
           print STDOUT "\nPara más información, véase la ayuda: $progname -h";
@@ -7480,134 +7608,133 @@ sub print_usage {
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈʝu.bja.";
-          print STDOUT "\n              d̪u.ˈɾan.t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
+          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈʝu.bja.d̪u.ˈɾan.";
+          print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Default options. Phonemic transcription. Affricates have ligature.";
-          print STDOUT "\n              Yod and wau are represented as /j/ and /w/. IPA stress apostrophe.";
-          print STDOUT "\n              Dentals have diacritic. Multi-character symbols (e.g. /t͡ʃ/).";
-          print STDOUT "\n              Utterance-level processing. The \"ye\" phoneme is transcribed as /ʝ/.";
+          print STDOUT "\nDESCRIPTION:  Default options. Phonemic transcription, syllabified by utterance";
+          print STDOUT "\n              (syllables cross word boundaries). Stress marked with the IPA";
+          print STDOUT "\n              apostrophe. Affricates with a tie bar, dentals with a diacritic,";
+          print STDOUT "\n              yod and wau as /j/ and /w/, the \"ye\" phoneme as /ʝ/. | is a short";
+          print STDOUT "\n              pause (a comma) and ‖ a long one (the end of a sentence).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -at";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en.kon.sep.sjón | se.t̪ɾá.t̪a.d̪e.a.gwan.t̪áɾ.la.ʝú.bja.d̪u.ɾán.t̪e.sín.";
-          print STDOUT "\n              ko.mé.ses.d̪e.lá.ɲo ‖ ka.t͡ʃáj";
+          print STDOUT "\nOUTPUT:       en.kon.sep.sjón | se.t̪ɾá.t̪a.d̪e.a.ɡwan.t̪áɾ.la.ʝú.bja.d̪u.ɾán.t̪e.";
+          print STDOUT "\n              sín.ko.mé.ses.d̪e.lá.ɲo ‖ ka.t͡ʃáj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Stress accent is marked with a tilde on the vowel instead of an";
-          print STDOUT "\n              IPA apostrophe before the syllable.";
+          print STDOUT "\nDESCRIPTION:  Stress is marked with an acute accent on the stressed vowel";
+          print STDOUT "\n              instead of the IPA apostrophe.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -nt";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       ẽŋ.kõn.sep.ˈsjõn.se.ˈt̪ɾa.t̪a.ð̞e.a.ɡwãn̪.ˈt̪aɾ.la.ˈʝu.bja.ð̞u.ˈɾãn̪.t̪e.ˈsĩŋ.";
-          print STDOUT "\n              kõ.ˈmẽ.ses.d̪e.ˈlã.ɲõ.ka.ˈt͡ʃaj";
+          print STDOUT "\nOUTPUT:       ẽŋ.kõn.sep.ˈsjõn | se.ˈt̪ɾa.t̪a.ð̞e.a.ɣ̞wãn̪.ˈt̪aɾ.la.ˈʝu.ʋja.ð̞u.ˈɾãn̪.";
+          print STDOUT "\n              t̪e.ˈsĩŋ.kõ.ˈmẽ.ses.ð̞e.ˈlã.ɲõ ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
           print STDOUT "\nDESCRIPTION:  Chilean Spanish narrow transcription, applied on top of the";
-          print STDOUT "\n              current transcription mode (here, the phonemic default). Note the";
-          print STDOUT "\n              spirantization of /b/, /d/, and /g/ between vowels -- even across a";
-          print STDOUT "\n              word boundary (\"trata de\" -> \"t̪ɾa.t̪a.ð̞e\"; \"lluvia durante\" ->";
-          print STDOUT "\n              \"bja.ð̞u\") -- but NOT after a consonant (\"del\" -> \"d̪e\", since the";
-          print STDOUT "\n              \"s\" in \"meses\" isn't a vowel); nasal place assimilation before a";
-          print STDOUT "\n              velar, dental, or palatal consonant (\"concepción\" -> \"kõn\" with /n/";
-          print STDOUT "\n              unchanged before alveolar /s/; \"cinco\" -> \"sĩŋko\" with /n/ -> /ŋ/";
-          print STDOUT "\n              before a velar; \"aguantar\" -> \"ɡwãn̪tar\" with /n/ -> /n̪/ before a";
-          print STDOUT "\n              dental; \"año\" -> \"lãɲõ\" with /n/ -> palatal /ɲ/); and vowel";
-          print STDOUT "\n              nasalization in direct contact with any nasal, in either direction.";
-          print STDOUT "\n              For the full detail of every rule, see the narrow-transcription-";
-          print STDOUT "\n              ruleset README.";
+          print STDOUT "\n              current mode (here, the phonemic one). /b d g/ are stops after a";
+          print STDOUT "\n              pause, after a nasal and, for /d/, after /l/; everywhere else";
+          print STDOUT "\n              they are approximants or fricatives, also across words: \"trata";
+          print STDOUT "\n              de\" t̪ɾa.t̪a.ð̞e, \"lluvia\" ʝu.ʋja, \"aguantar\" a.ɣ̞wan, \"meses del\"";
+          print STDOUT "\n              mẽ.ses.ð̞e. /n/ takes the place of articulation of the next";
+          print STDOUT "\n              consonant (\"cinco\" sĩŋ.kõ, \"aguantar\" ɣ̞wãn̪.t̪aɾ), and a vowel next";
+          print STDOUT "\n              to a nasal consonant is nasalized. Every rule is described in";
+          print STDOUT "\n              perkins-narrow-transcription-ruleset_README.md.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -ya";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈd͡ʒu.bja.d̪u.ˈɾan.";
+          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈʤu.bja.d̪u.ˈɾan.";
           print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  The \"ye\" phoneme is transcribed as the affricate /d͡ʒ/.";
+          print STDOUT "\nDESCRIPTION:  The \"ye\" phoneme is the affricate /ʤ/. With -nooye it is written";
+          print STDOUT "\n              /d͡ʒ/, with a tie bar, like /t͡ʃ/.";
           print STDOUT "\n-------------------------------------------------------------------------------";
-          print STDOUT "\nCOMMAND:      $progname -i=source.txt -ya -ar";
+          print STDOUT "\nCOMMAND:      $progname -i=source.txt -ya -nooye -ar";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈd̠͡ʒu.bja.d̪u.ˈɾan.";
+          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈd̠͡ʒu.bja.d̪u.ˈɾan.";
           print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt̠͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  The \"retracted\" diacritic is used to represent the affricates";
-          print STDOUT "\n              /d̠͡ʒ/ and /t̠͡ʃ/.";
+          print STDOUT "\nDESCRIPTION:  Both affricates carry the retracted diacritic (/d̠͡ʒ/ and /t̠͡ʃ/).";
           print STDOUT "\n-------------------------------------------------------------------------------";
-          print STDOUT "\nCOMMAND:      $progname -i=source.txt -ya -tg";
+          print STDOUT "\nCOMMAND:      $progname -i=source.txt -tg";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪͡ɾa.t̪a.d̪e.a.gwan.ˈt̪aɾ.la.ˈd͡ʒu.bja.d̪u.ˈɾan.";
+          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈt̪͡ɾa.t̪a.d̪e.a.ɡwan.ˈt̪aɾ.la.ˈʝu.bja.d̪u.ˈɾan.";
           print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  The \"tr\" cluster is treated as a phoneme (which is how it behaves";
-          print STDOUT "\n              in many Chilean speakers).";
+          print STDOUT "\nDESCRIPTION:  The \"tr\" cluster is treated as one phoneme (/t̪͡ɾ/), as it is for";
+          print STDOUT "\n              many Chilean speakers.";
           print STDOUT "\n-------------------------------------------------------------------------------";
-          print STDOUT "\nCOMMAND:      $progname -i=source.txt -ya -tg -nomc";
+          print STDOUT "\nCOMMAND:      $progname -i=source.txt -tg -nomc";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈʂa.ta.de.a.gwan.ˈtaɾ.la.ˈʤu.bja.du.ˈɾan.te.";
-          print STDOUT "\n              ˈsin.ko.ˈme.ses.de.ˈla.ɲo ‖ ka.ˈʧaj";
+          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsjon | se.ˈʂa.ta.de.a.ɡwan.ˈtaɾ.la.ˈʝu.bja.du.ˈɾan.";
+          print STDOUT "\n              te.ˈsin.ko.ˈme.ses.de.ˈla.ɲo ‖ ka.ˈʧaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Phonemes are represented only with one-character symbols (/ʤ/; ";
-          print STDOUT "\n              /ʧ/; /ʂ/ instead of /t̪͡ɾ/) except for glides, which may be";
-          print STDOUT "\n              configured separately with the \'-gd\' and \'-nogd\' switches.";
+          print STDOUT "\nDESCRIPTION:  Every phoneme is written with one character: /ʂ/ instead of /t̪͡ɾ/,";
+          print STDOUT "\n              /ʧ/ instead of /t͡ʃ/, and /t/ and /d/ without the dental";
+          print STDOUT "\n              diacritic. Glides are set separately, with -gd and -nogd.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -gd";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsi̯on | se.ˈt̪ɾa.t̪a.d̪e.a.gu̯an.ˈt̪aɾ.la.ˈʝu.bi̯a.d̪u.ˈɾan.t̪e.";
-          print STDOUT "\n              ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃai̯";
+          print STDOUT "\nOUTPUT:       en.kon.sep.ˈsi̯on | se.ˈt̪ɾa.t̪a.d̪e.a.ɡu̯an.ˈt̪aɾ.la.ˈʝu.bi̯a.d̪u.ˈɾan.";
+          print STDOUT "\n              t̪e.ˈsin.ko.ˈme.ses.d̪e.ˈla.ɲo ‖ ka.ˈt͡ʃai̯";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Transcribe glides as vowel + \"non-syllabic\ diacritic\" (/i̯/, /u̯/)";
+          print STDOUT "\nDESCRIPTION:  Glides are written as vowel + non-syllabic diacritic (/i̯/, /u̯/)";
           print STDOUT "\n              instead of /j/ and /w/.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -nospe";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en kon.sep.ˈsjon | se ˈt̪ɾa.t̪a d̪e a.gwan.ˈt̪aɾ la ˈʝu.bja d̪u.ˈɾan.t̪e";
-          print STDOUT "\n              ˈsin.ko ˈme.ses d̪el ˈa.ɲo ‖ ka.ˈt͡ʃaj";
+          print STDOUT "\nOUTPUT:       en kon.sep.ˈsjon | se ˈt̪ɾa.t̪a d̪e a.ɡwan.ˈt̪aɾ la ˈʝu.bja d̪u.ˈɾan.";
+          print STDOUT "\n              t̪e ˈsin.ko ˈme.ses d̪el ˈa.ɲo ‖ ka.ˈt͡ʃaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Syllabify at word-level rather than utterance/sentence-level.";
+          print STDOUT "\nDESCRIPTION:  Syllabification by word, not by utterance: syllables do not cross";
+          print STDOUT "\n              word boundaries (\"del año\" d̪el ˈa.ɲo, not d̪e.ˈla.ɲo).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -cv";
           print STDOUT "\n";
           print STDOUT "\nOUTPUT:       VC.CVC.CVC.ˈCVVC | CV.ˈCCV.CV.CV.V.CVVC.ˈCVC.CV.ˈCV.CVV.CV.ˈCVC.";
-          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CVC.ˈV.CV ‖ CV.ˈCVV";
+          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CV.ˈCV.CV ‖ CV.ˈCVV";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Analyze input in terms of consonant/vowel.";
+          print STDOUT "\nDESCRIPTION:  Consonants (C) and vowels (V).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -cvg";
           print STDOUT "\n";
           print STDOUT "\nOUTPUT:       VC.CVC.CVC.ˈCGVC | CV.ˈCCV.CV.CV.V.CGVC.ˈCVC.CV.ˈCV.CGV.CV.ˈCVC.";
-          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CVC.ˈV.CV ‖ CV.ˈCVG";
+          print STDOUT "\n              CV.ˈCVC.CV.ˈCV.CVC.CV.ˈCV.CV ‖ CV.ˈCVG";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Analyze input in terms of consonant/vowel/glide.";
+          print STDOUT "\nDESCRIPTION:  Consonants (C), vowels (V) and glides (G).";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -cvn";
           print STDOUT "\n";
           print STDOUT "\nOUTPUT:       VN.CVN.CVC.ˈCGVN | CV.ˈCRV.CV.CV.V.CGVN.ˈCVR.LV.ˈCV.CGV.CV.ˈRVN.";
-          print STDOUT "\n              CV.ˈCVN.CV.ˈNV.CVC.CVL.ˈV.NV ‖ CV.ˈCVG";
+          print STDOUT "\n              CV.ˈCVN.CV.ˈNV.CVC.CV.ˈLV.NV ‖ CV.ˈCVG";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Analyze input in terms of consonant/vowel/glide/nasal/liquid/rhotic.";
+          print STDOUT "\nDESCRIPTION:  N = nasal, L = lateral, R = rhotic, G = glide, V = vowel,";
+          print STDOUT "\n              C = every other consonant.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -m";
           print STDOUT "\n";
           print STDOUT "\nOUTPUT:       VN.PVN.FVP.ˈFXVN | FV.ˈPTV.PV.PV.V.PXVN.ˈPVT.LV.ˈFV.PXV.PV.ˈTVN.";
-          print STDOUT "\n              PV.ˈFVN.PV.ˈNV.FVF.PVL.ˈV.NV ‖ PV.ˈAVX";
+          print STDOUT "\n              PV.ˈFVN.PV.ˈNV.FVF.PV.ˈLV.NV ‖ PV.ˈAVX";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Analyze input in terms of MANNERS of articulation.";
-          print STDOUT "\n              (P=plosive, N=nasal, R=trill, T=tap/flap, F=fricative, L=lateral,";
-          print STDOUT "\n              A=affricate, X=approximant, V=vowel).";
+          print STDOUT "\nDESCRIPTION:  Manners of articulation: P = plosive, N = nasal, R = trill,";
+          print STDOUT "\n              T = tap, F = fricative, L = lateral, A = affricate,";
+          print STDOUT "\n              X = approximant, V = vowel.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -p";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.D-.";
-          print STDOUT "\n              ˈA-A.V-.ˈB-.A-A.D-A.ˈ-.P- ‖ V-.ˈT-P";
+          print STDOUT "\nOUTPUT:       -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.";
+          print STDOUT "\n              D-.ˈA-A.V-.ˈB-.A-A.D-.ˈA-.P- ‖ V-.ˈT-P";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Analyze input in terms of PLACES of articulation.";
-          print STDOUT "\n              (B=bilabial, L=labiodental, D=dental, A=alveolar, T=post-alveolar, ";
-          print STDOUT "\n              P=palatal, V=velar, W=labiovelar, -=vowel).";
+          print STDOUT "\nDESCRIPTION:  Places of articulation: B = bilabial, L = labiodental,";
+          print STDOUT "\n              D = dental, A = alveolar, T = postalveolar, P = palatal,";
+          print STDOUT "\n              V = velar, W = labiovelar, - = vowel. \"tr\" is DA (dental and";
+          print STDOUT "\n              alveolar); with -tg, A.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -voicing";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       SS.ASS.ASA.ˈASSS.AS.ˈASS.AS.SS.S.SSSS.ˈASS.SS.ˈSS.SSS.SS.ˈSSS.AS.ˈSAA.SA.";
-          print STDOUT "\n              ˈSS.ASA.SS.ˈSS.SS.AS.ˈASS";
+          print STDOUT "\nOUTPUT:       SS.ASS.ASA.ˈASSS | AS.ˈASS.AS.SS.S.SSSS.ˈASS.SS.ˈSS.SSS.SS.ˈSSS.";
+          print STDOUT "\n              AS.ˈASS.AS.ˈSS.ASA.SS.ˈSS.SS ‖ AS.ˈASS";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Analyze input in terms of voicing (S=voiceless, A=voiced,";
-          print STDOUT "\n              including all vowels).";
+          print STDOUT "\nDESCRIPTION:  Voicing: S = voiced (every vowel is), A = voiceless.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\n";
           print STDOUT "\nDECIMAL SEPARATOR (--decimal-period / --decimal-comma):";
@@ -7616,73 +7743,133 @@ sub print_usage {
           print STDOUT "\n";
           print STDOUT "\nCOMMAND:      $progname -i=source2.txt";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       el.t̪o.ˈt̪a.les.ˈd̪o.se.ˈpe.sos.kon.ˈt̪ɾejn.ta.i.ˈsin.ko.sen.ˈt̪a.bos";
+          print STDOUT "\nOUTPUT:       el.t̪o.ˈt̪a.les.ˈd̪o.se.ˈpe.sos.kon.ˈt̪ɾejn.t̪a.i.ˈsin.ko.sen.ˈt̪a.bos";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  By default (--decimal-comma), the comma is the decimal";
-          print STDOUT "\n              separator: \"12,35\" is twelve pesos and thirty-five cents.";
+          print STDOUT "\nDESCRIPTION:  By default (--decimal-comma), the comma is the decimal separator:";
+          print STDOUT "\n              \"12,35\" is twelve pesos and thirty-five cents.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source2.txt --decimal-period";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       el.t̪o.ˈt̪a.les.mil.d̪os.ˈsjen.tos.ˈt̪ɾejn.ta.i.ˈsin.ko.ˈpe.sos";
+          print STDOUT "\nOUTPUT:       el.t̪o.ˈt̪a.les.mil.d̪o.ˈsjen.t̪os.ˈt̪ɾejn.t̪a.i.ˈsin.ko.ˈpe.sos";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  With --decimal-period, the period becomes the decimal";
-          print STDOUT "\n              separator and the comma the thousands separator: \"12,35\" is";
-          print STDOUT "\n              read as \"1235\", i.e. one thousand two hundred thirty-five pesos.";
+          print STDOUT "\nDESCRIPTION:  With --decimal-period, the period becomes the decimal separator";
+          print STDOUT "\n              and the comma the thousands separator: \"12,35\" is read as 1235,";
+          print STDOUT "\n              that is, one thousand two hundred thirty-five pesos.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\n";
-          print STDOUT "\nOTHER META-CONFIGURATIONS:";
-          print STDOUT "\n(Using the same original source text from above)";
+          print STDOUT "\nLISTS AND OTHER META-CONFIGURATIONS:";
+          print STDOUT "\n(Using the same source text as above)";
           print STDOUT "\n";
+          print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -mfa";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       Grapheme-to-Phoneme dictionary, one entry per word, with";
-          print STDOUT "\n              phonemes space-separated (compatible with the Montreal Forced";
-          print STDOUT "\n              Aligner). For example:";
+          print STDOUT "\nOUTPUT:       Grapheme-to-Phoneme dictionary (Montreal Forced Aligner):";
+          print STDOUT "\n              one entry per word, in alphabetical order, without repeats.";
           print STDOUT "\n";
-          print STDOUT "\n                concepción\tk o n s e p s j o n";
-          print STDOUT "\n                aguantar\ta ɡ w a n t̪ a ɾ";
-          print STDOUT "\n                cinco\ts i n k o";
+          print STDOUT "\n                aguantar     a ɡ w a n t̪ a ɾ";
+          print STDOUT "\n                año          a ɲ o";
+          print STDOUT "\n                concepción   k o n s e p s j o n";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPTION:  Phonemes are separated by spaces, without stress or syllables.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -phonword";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       One word per line, as \"Ortho<TAB>tran.scrip.tion\" (with tildes";
-          print STDOUT "\n              kept in the orthographic column). For example:";
+          print STDOUT "\nOUTPUT:       One word per line, \"Ortho<TAB>transcription\":";
           print STDOUT "\n";
-          print STDOUT "\n                concepción\tkon.sep.ˈsjon";
-          print STDOUT "\n                cachái\tka.ˈt͡ʃaj";
+          print STDOUT "\n                Concepción   kon.sep.ˈsjon";
+          print STDOUT "\n                trata        ˈt̪ɾa.t̪a";
+          print STDOUT "\n                Cachái       ka.ˈt͡ʃaj";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPTION:  For Praat word tiers. The orthographic column keeps capitals and";
+          print STDOUT "\n              accents; the transcription keeps syllables and stress.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -vrt";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en kon.sep.si.ón se tɾá.ta de a.gwan.táɾ la ʝú.bja du.ɾán.te sín.ko";
-          print STDOUT "\n              mé.ses del á.ɲo ka.ʧáj";
+          print STDOUT "\nOUTPUT:       en";
+          print STDOUT "\n              kon.sep.sjón";
+          print STDOUT "\n              se";
+          print STDOUT "\n              tɾá.ta";
+          print STDOUT "\n              de";
+          print STDOUT "\n              a.ɡwan.táɾ";
+          print STDOUT "\n              (...)";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  For processing verticalized text (one input word per line),";
-          print STDOUT "\n              compatible with the IMS Corpus Workbench. Syllabifies at the";
-          print STDOUT "\n              word level, not the utterance level.";
+          print STDOUT "\nDESCRIPTION:  Word list: one transcribed word per line, in text order, without";
+          print STDOUT "\n              pauses. Syllabifies by word, marks stress with an accent and uses";
+          print STDOUT "\n              one character per phoneme, without dental diacritics. The default";
+          print STDOUT "\n              output file ends in .vrt. With -sas, one syllable per line.";
+          print STDOUT "\n-------------------------------------------------------------------------------";
+          print STDOUT "\nCOMMAND:      $progname -i=source.txt -owl";
+          print STDOUT "\n";
+          print STDOUT "\nOUTPUT:       en";
+          print STDOUT "\n              kon.sep.ˈsjon";
+          print STDOUT "\n              se";
+          print STDOUT "\n              ˈt̪ɾa.t̪a";
+          print STDOUT "\n              d̪e";
+          print STDOUT "\n              a.ɡwan.ˈt̪aɾ";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPTION:  One word per line, without pauses, with whatever other options";
+          print STDOUT "\n              are set (here, the defaults). Syllabifies by word.";
+          print STDOUT "\n-------------------------------------------------------------------------------";
+          print STDOUT "\nCOMMAND:      $progname -i=source.txt -sas";
+          print STDOUT "\n";
+          print STDOUT "\nOUTPUT:       en";
+          print STDOUT "\n              kon";
+          print STDOUT "\n              sep";
+          print STDOUT "\n              sjon";
+          print STDOUT "\n              se";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n              ses";
+          print STDOUT "\n              d̪e";
+          print STDOUT "\n              la";
+          print STDOUT "\n              ɲo";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPTION:  One syllable per line, without pauses or stress marks, cut from";
+          print STDOUT "\n              running text: with syllabification by utterance (the default),";
+          print STDOUT "\n              \"del año\" gives d̪e, la, ɲo.";
+          print STDOUT "\n-------------------------------------------------------------------------------";
+          print STDOUT "\nCOMMAND:      $progname -i=source.txt -sas -nospe";
+          print STDOUT "\n";
+          print STDOUT "\nOUTPUT:       en";
+          print STDOUT "\n              kon";
+          print STDOUT "\n              sep";
+          print STDOUT "\n              sjon";
+          print STDOUT "\n              se";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n              ses";
+          print STDOUT "\n              d̪el";
+          print STDOUT "\n              a";
+          print STDOUT "\n              ɲo";
+          print STDOUT "\n              (...)";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPTION:  The syllables are cut from each word on its own: \"del año\" gives";
+          print STDOUT "\n              d̪el, a, ɲo. -osl is the same as -sas.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -syl-list";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en kon sep 'sjon se 'ʂa ta de a gwan 'taɾ la 'ʝu bja du 'ɾan te";
-          print STDOUT "\n              'sin ko 'me ses de 'la ɲo ka 'ʧaj";
+          print STDOUT "\nOUTPUT:       en kon sep 'sjon | se 'ʂa ta de a ɡwan 'taɾ la 'ʝu bja du 'ɾan te";
+          print STDOUT "\n              'sin ko 'me ses de 'la ɲo ‖ ka 'ʧaj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  For generating transcriptions that are easy to process at";
-          print STDOUT "\n              the syllable level: syllables space-separated, stress marked";
-          print STDOUT "\n              with an apostrophe.";
+          print STDOUT "\nDESCRIPTION:  For processing the text at the syllable level: syllables";
+          print STDOUT "\n              separated by spaces, stress marked with an apostrophe, \"tr\" as";
+          print STDOUT "\n              one phoneme.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -coscach";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       en kon sep sjón se tɾá ta de a gwan táɾ la ʝú bja du ɾán te";
-          print STDOUT "\n              sín ko mé ses de lá ɲo ka tʃáj";
+          print STDOUT "\nOUTPUT:       en kon sep sjón | se tɾá ta de a ɡwan táɾ la ʝú bja du ɾán te sín";
+          print STDOUT "\n              ko mé ses de lá ɲo || ka tʃáj";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  Configuration tuned to the COSCACH/CODICACH corpus";
-          print STDOUT "\n              conventions: stress marked with a tilde, syllables";
-          print STDOUT "\n              space-separated.";
+          print STDOUT "\nDESCRIPTION:  The conventions of the COSCACH corpus: stress marked with an";
+          print STDOUT "\n              accent, syllables separated by spaces, the long pause as ||.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -word-list";
           print STDOUT "\n";
-          print STDOUT "\nDESCRIPTION:  For processing word lists: syllabifies at the word level";
-          print STDOUT "\n              rather than the utterance level (useful for lists where each";
-          print STDOUT "\n              line is an independent word, not a sentence).";
+          print STDOUT "\nOUTPUT:       en kon.sep.ˈsjon | se ˈtɾa.ta de a.ɡwan.ˈtaɾ la ˈʝu.bja du.ˈɾan.";
+          print STDOUT "\n              te ˈsin.ko ˈme.ses del ˈa.ɲo ‖ ka.ˈʧaj";
+          print STDOUT "\n";
+          print STDOUT "\nDESCRIPTION:  For word lists in which each line is a word, not a sentence:";
+          print STDOUT "\n              syllabifies by word, with one character per phoneme.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\n";
           print STDOUT "\nFor more information, see program help: $progname -h";
@@ -7868,8 +8055,7 @@ sub print_header_CLI_status_msgs {
 ####################################################################################
 sub assign_default_output_filename {
 
-     # If format is VRT, append ".vrt" to BASENAME. This does NOT get ".txt" at the end
-     # because a lot of software expects the ".vrt" extension"
+     # -vrt (a word list): append ".vrt" to BASENAME, without ".txt".
      if ( $vrt_format == 1 ) {
           $in_basename     = "$in_basename.vrt";
           $output_filename = "$in_basename";
@@ -7919,6 +8105,13 @@ sub assign_default_output_filename {
      else {
           $output_filename = "$in_basename.PHNM.txt";
      }
+
+     # The default name must never be the input file itself: with -vrt, an
+     # input named "list.vrt" would otherwise be overwritten by its own word
+     # list. "list.vrt" gives "list.out.vrt" instead.
+     if ( $output_filename eq $input_filename ) {
+          $output_filename =~ s/(\.[^.\/\\]+)$/.out$1/;
+     }
 }
 
      if ( $debug == 1 ) {
@@ -7935,6 +8128,26 @@ sub assign_default_output_filename {
 #            SUBROUTINE: OPEN OUTPUT FILE - Output will be UTF-8           #
 ############################################################################
 sub open_output_file {
+
+     # Opening the output file empties it, so the output file must not be the
+     # input file: that would erase the input before it is read.
+     if ( -e $output_filename && -e $input_filename ) {
+          my @o = stat($output_filename);
+          my @i = stat($input_filename);
+          my $same = $i[1]
+            ? ( $o[0] == $i[0] && $o[1] == $i[1] )
+            : ( lc( File::Spec->rel2abs($output_filename) ) eq lc( File::Spec->rel2abs($input_filename) ) );
+          if ($same) {
+               if ( $lang eq "es" ) {
+                    print STDERR "\nERROR: El archivo de salida (-o=) es el mismo archivo de entrada (-i=). Elija otro nombre.\n\n";
+               }
+               else {
+                    print STDERR "\nERROR: The output file (-o=) is the input file (-i=). Choose another name.\n\n";
+               }
+               exit 1;
+          }
+     }
+
      open( OUTPUTFILE, '>:encoding(UTF-8)', "$output_filename" );
 
      # Print any debug info that may be required
@@ -8420,10 +8633,11 @@ sub forcibly_set_variables {
      }
 
 
-     # VERTICAL TEXT FILE (.vrt) SETTINGS                                       #
+     # -vrt: WORD LIST SETTINGS                                                 #
      # Doesn't specify transcription format, to allow different ones to be used.#
-     # Vertical output (one word per line), syllables NOT separated, stress     #
-     # using tildes.                                                            #
+     # One word per line (one syllable per line with -sas), syllabified by      #
+     # word, stress using tildes. The list itself is made at the end, by        #
+     # write_list_output(), like -owl and -sas.                                 #
      if ( $vrt_format == 1 ) {
 
           # $output_PHON = 1;
@@ -8500,10 +8714,14 @@ sub forcibly_set_variables {
      if ( $no_stress_marks == 1 ) { $stress_using_tildes = 0 }
 
      # SET OPTIONS FOR SPLITTING AT SYLLABLES
+     # A syllable list has no stress marks and needs the syllable dots to cut
+     # at. Pauses stay on during the transcription, so that syllables are not
+     # joined across a pause in running text; write_list_output() removes them.
      if ( $split_at_syllables == 1 ) {
-          $vertical_output          = 1;
           $insert_syllable_dots     = 1;
           $no_stress_marks          = 1;
+          $stress_using_tildes      = 0;
+          $non_ipa_apostrophes      = 0;
           $syllable_dots_are_spaces = 0;
      }
 
@@ -8534,6 +8752,29 @@ sub forcibly_set_variables {
           $add_paren_pauses     = 0;
      }
 
+     # ONE WORD OR ONE SYLLABLE PER LINE (-owl, -vrt, -sas, -osl)
+     # The transcription runs as ordinary running text, one line per input
+     # line, so that every cleanup step of Stage 2 sees the words in context.
+     # The list is cut from the finished file at the very end, by
+     # write_list_output(). (Printing one word per line in Stage 1, as was once
+     # done, lost every line break in Stage 2.) -mfa, -phonword and
+     # -tok write their own one-entry-per-line formats and are not affected.
+     # A word list is syllabified word by word, since sentence-level
+     # syllabification joins the words with syllable dots. A syllable list is
+     # cut from running words (sentence-level syllabification, the default) or
+     # from single words (-nosbu, and the -vrt preset).
+     if ( $mfa_format == 0 && $phonword_format == 0 && $token_mode == 0 ) {
+          if ( $split_at_syllables == 1 ) {
+               $list_mode = 'syllables';
+          }
+          elsif ( $vertical_output == 1 ) {
+               $list_mode                = 'words';
+               $syllabify_by_sentence    = 0;
+               $syllable_dots_are_spaces = 0;
+          }
+          $vertical_output = 0 if $list_mode ne '';
+     }
+
      # SET OPTIONS FOR SILENT MODE
      if ( $silent_mode == 1 ) {
           $batch_mode       = 1;
@@ -8555,11 +8796,6 @@ sub forcibly_set_variables {
      # SET OPTIONS FOR NON-IPA APOSTROPHES
      if ( $non_ipa_apostrophes == 1 ) {
           $stress_using_tildes = 0;
-     }
-
-     # PREPARE FOR SENTENCE-LEVEL SYLLABIFICATION (INSTEAD OF WORD-LEVEL)
-     if ( $syllabify_by_sentence == 1 ) {
-          $split_at_syllables = 0;
      }
 
      # SET OPTIONS FOR SYLLABLES DOTS AS SPACES
@@ -8913,27 +9149,6 @@ sub print_console_greeting {
 
 }    # END SUBROUTINE: PRINT CONSOLE GREETING
 
-#################################################################################
-#                                                                               #
-# SUBROUTINE: .VRT DISASTROUS CHARACTER ELIMINATION                            #
-# Kill odd characters that are used internally by Perkins, before anything      #
-# else is replaced.                                                             #
-#                                                                               #
-#################################################################################
-sub kill_disasterous_vrt_chars {
-     my $current_item = $_[0];
-
-     $current_item =~ s/¬/ø/g;
-     $current_item =~ s/\|/ø/g;
-     $current_item =~ s/¯/ø/g;
-     $current_item =~ s/§/ø/g;
-     $current_item =~ s/©/ø/g;
-     $current_item =~ s/®/ø/g;
-     $current_item =~ s/¥/ø/g;
-     $current_item =~ s/\*/ø/g;
-
-     return ($current_item);
-}
 
 #################################################################################
 #                                                                               #
@@ -9309,23 +9524,13 @@ m/<?((http|https|ftp|sftp|news|gopher|mailto):(\/\/)?|(www\.))([a-zA-Z0-9_\$\&\+
                #if ( $current_segment =~ m/[\w\-\.\+]+\@[\w.]+/ ) {
                if ( $current_segment =~ m/[\w\-\.\+]+\@[\w.]+/ ) {
 
-                    if ( $vrt_format == 1 ) {
-                         $current_segment =~ s/\-/¬guión¬/g;
-                         $current_segment =~ s/\-/¬guión¬/g;
-                         $current_segment =~ s/\@/¬arroba¬/g;
-                         $current_segment =~ s/\_/¬guión bajo¬/g;
-                         $current_segment =~ s/\./¬punto¬/g;
-                         $current_segment =~ s/\+/¬signo mas¬/g;
-                    }
-                    else {
-                         $current_segment =~ s/\-/ guión /g;
-                         $current_segment =~ s/\@/ arroba /g;
-                         $current_segment =~ s/\_/ guión bajo /g;
-                         $current_segment =~ s/\./ punto /g;
-                         $current_segment =~ s/\+/ signo mas /g;
+                    $current_segment =~ s/\-/ guión /g;
+                    $current_segment =~ s/\@/ arroba /g;
+                    $current_segment =~ s/\_/ guión bajo /g;
+                    $current_segment =~ s/\./ punto /g;
+                    $current_segment =~ s/\+/ signo mas /g;
 
-                         #print STDOUT "***PROCESS E-MAIL (no VRT) subroutine executed\n";
-                    }
+                    #print STDOUT "***PROCESS E-MAIL subroutine executed\n";
                }
           }
           else {
@@ -9341,20 +9546,11 @@ m/<?((http|https|ftp|sftp|news|gopher|mailto):(\/\/)?|(www\.))([a-zA-Z0-9_\$\&\+
 
           # CHANGE "." WHEN IT IS SURROUNDED BY LETTERS TO "PUNTO".  FOR URLs, MAINLY
 
-          if ( $vrt_format == 1 ) {
-               $current_segment =~ s/([a-zA-Z]+)øøø([a-zA-Z]+)/$1¬punto¬$2/g;
-               $current_segment =~ s/([a-zA-Z]+)øøø([a-zA-Z]+)/$1¬punto¬$2/g;    # Not sure why the prev line doesn't catch all instances...
-               $current_segment =~ s/([a-zA-Z]+)øøø([a-zA-Z]+)/$1¬punto¬$2/g;    # This is here just for good measure.
-               $current_segment =~ s/([a-zA-Z]+)øøø([a-zA-Z]+)/$1¬punto¬$2/g;    # Ditto.
-               $current_segment =~ s/([a-zA-Z]+)øøø([a-zA-Z]+)/$1¬punto¬$2/g;    # Ditto.
-          }
-          else {
-               $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;
-               $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # Not sure why the prev line doesn't catch all instances...
-               $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # This is here just for good measure.
-               $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # Ditto.
-               $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # Ditto.
-          }
+          $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;
+          $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # Not sure why the prev line doesn't catch all instances...
+          $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # This is here just for good measure.
+          $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # Ditto.
+          $current_segment =~ s/([a-zA-Z]+)\.([a-zA-Z]+)/$1 punto $2/g;          # Ditto.
 
           #print "==>EXPER-INT-STUFF-SPLIT----END=$current_segment\n";                 # AD-HOC DEBUGGING
      }
@@ -9375,66 +9571,11 @@ sub fix_misc_punctuation {
      # Read value passed into subroutine and assign it to $current_item
      my $current_item = $_[0];
 
-     ############################################################################
-     # INSERT .VRT FORMAT PLACEHOLDERS                                          #
-     # This protects characters that would otherwise be eliminated.             #
-     ############################################################################
-     if ( $vrt_format == 1 ) {
-
-          #$temp = Encode::encode_utf8($current_item);    # AD-HOC DEBUG
-          #print STDOUT "\nVRT-FORMAT-PLCHLD-BEF:$temp:\n";    # AD-HOC DEBUG
-
-          # Things that appear alone on a line
-          $current_item =~ s/^$/øø/g;           # Blank line
-          $current_item =~ s/^\.$/þ/g;          # Period
-          $current_item =~ s/^,$/¢/g;           # Comma
-          $current_item =~ s/^\:$/ĸ/g;          # Colon
-          $current_item =~ s/^\;$/ĸ/g;          # Semi-colon
-          $current_item =~ s/^\-$/ð/g;          # Dash
-          $current_item =~ s/^\"$/ł/g;          # Quotation mark
-          $current_item =~ s/^¿$/ŋ/g;           # Opening question mark
-          $current_item =~ s/^\+$/øø/g;         # Plus sign
-          $current_item =~ s/^\.\.\.$/øø/g;     # Ellipsis
-          $current_item =~ s/^\@$/øø/g;         # At sign
-
-          # Things that don't necessarily have to appear alone on a line
-          $current_item =~ s/\(/ø/g;            # Open paren.
-          $current_item =~ s/\)/ø/g;            # Close paren.
-          $current_item =~ s/¡/øø/g;            # Opening exclamation point
-          $current_item =~ s/#/øø/g;            # Number sign
-          $current_item =~ s/º/øø/g;            # Male ord.
-          $current_item =~ s/ª/øø/g;            # Female ord.
-          $current_item =~ s/°/øø/g;            # Degree symbol
-          $current_item =~ s/\\/øø/g;           # Backslash
-          $current_item =~ s/\|/øø/g;           # Pipe
-          $current_item =~ s/\€/ euros /g;      # Euro sign
-          $current_item =~ s/&/øø/g;            # Ampersand
-          $current_item =~ s/~/øø/g;            # Tilde
-          $current_item =~ s/\^/øø/g;           # Caret
-          $current_item =~ s/'/øø/g;            # Apostrophe
-          $current_item =~ s/\*/øø/g;           # Asterisk
-          $current_item =~ s/_/øø/g;            # Underscore
-
-          #$temp = Encode::encode_utf8($current_item);      # AD-HOC DEBUG
-          #print STDOUT "VRT-FORMAT-PLCHLD-AFT:$temp:\n";   # AD-HOC DEBUG
-
-     }
-
      #   ADD SPACE AFTER PERIOD+BRACKETS. Prevents problems with .[ and .( in cites.
      $current_item =~ s/\.[\[\]\{\}\(\}]/\. /g;
 
-     # PROCESS QUOTATION MARKS
-
-     # CONNEXOR MAINTAINS QUOTATION MARKS, ASSIGNING THEM TO THEIR OWN LINE. THUS
-     # FOR THE .VRT FORMAT, THESE MUST BE PRESERVED.
-     if ( $vrt_format == 1 ) {
-          $current_item =~ s/"/½/g;
-     }
-
-     # REMOVE QUOTATION MARKS IN ALL OTHER CASES.
-     else {
-          $current_item =~ s/"//g;
-     }
+     # REMOVE QUOTATION MARKS
+     $current_item =~ s/"//g;
 
      # ELIMINATE ELLIPSES AT BEGINNING OF LINE
      $current_item =~ s/^\.\.\.//g;
@@ -9506,16 +9647,9 @@ sub fix_misc_punctuation {
      ############################################################################
      # CONVERT 2 or 3 DASHES INTO COMMA (TO MAKE PAUSE).                        #
      # (e.g. "se fue -- rápidamente --- y lloró".                               #
-     # ONLY for non-VRT formats.                                                #
      ############################################################################
-     if ( $vrt_format == 0 ) {
-          $current_item =~ s/\-\-\-/, /g;
-          $current_item =~ s/\-\-/, /g;
-     }
-     else {
-          $current_item =~ s/\-\-\-/ guión /g;
-          $current_item =~ s/\-\-/ guión /g;
-     }
+     $current_item =~ s/\-\-\-/, /g;
+     $current_item =~ s/\-\-/, /g;
 
      ###########################################################################
      # CONVERT A MINUS SIGN ATTACHED TO A DIGIT (NEGATIVE NUMBER) INTO "MENOS" #
@@ -9534,9 +9668,7 @@ sub fix_misc_punctuation {
      # " . $moneda . " " (whatever currency name is configured, "pésos" by     #
      # default)).                                                              #
      ###########################################################################
-     if ( $vrt_format == 0 ) {
-          $current_item =~ s/(^|\s)-(?=\$?[0-9])/${1}menos /g;
-     }
+     $current_item =~ s/(^|\s)-(?=\$?[0-9])/${1}menos /g;
 
      ###########################################################################
      # CONVERT REMAINING CASES OF 1 DASH INTO COMMA + SPACE (TO MAKE PAUSE)    #
@@ -9544,23 +9676,6 @@ sub fix_misc_punctuation {
      $current_item =~ s/\-/, /g;
 
      # print "\n==  DASH PROCESSING AFT:: $current_item";   # DEBUG
-
-     ###########################################################################
-     # ELIMINATE MOST PUNCTUATION AT END OF WORD (UTTERANCE) FOR VRT           #
-     ###########################################################################
-     # WARNING: Added in 401
-     if ( $vrt_format == 1 ) {
-
-          # NEW IN 402: Removed "\>" from search expression, to preserve <s> and <p>
-          $current_item =~ s/(\,|\-|\_|\@|\+|\&|\.) *$//g;
-     }
-
-     ###########################################################################
-     # CONVERT COMMAS INTO THE WORD "kó.ma"                                    #
-     ###########################################################################
-     if ( $vrt_format == 1 ) {
-          $current_item =~ s/ , / coma /g;
-     }
 
      return ($current_item);
 
@@ -9571,490 +9686,291 @@ sub fix_misc_punctuation {
 #   SUBROUTINE: EXPAND ABBREVIATIONS IN ORTHOGRAPHIC FORM                       #
 #                                                                               #
 #################################################################################
+############################################################################
+# SUBROUTINE: PROTECT_ABBREVIATION_PERIODS                                 #
+# Called by normalize_structured_tokens() before it turns a period after a #
+# word into an utterance boundary. The period of each abbreviation that    #
+# expand_abbreviations_ortho() knows becomes \x{E000}, which no step in    #
+# between touches; expand_abbreviations_ortho() turns it back into a       #
+# period and expands the abbreviation.                                     #
+# Words that are also ordinary words at the end of a sentence (a, e, i, o, #
+# u, y, as, se, so, gen, vid) are protected only inside a longer          #
+# abbreviation (bs. as.), and "no." only before a number (no. 5). "etc."   #
+# is spelled out here and keeps its period, since it so often ends a       #
+# sentence. A single letter with a period is left alone: most (J., p.) and #
+# the other tokens of the built-in tables (Dr.) are read by               #
+# apply_builtin_exceptions() before this runs, and the rest (plan B.) are  #
+# spelled out later. Capitals (EE. UU.) are read by prelc_pass().          #
+############################################################################
+
+sub protect_abbreviation_periods {
+     my $t = shift;
+     our $ABBREVIATION_PERIOD_RE;
+     unless ( defined $ABBREVIATION_PERIOD_RE ) {
+          my @words = qw(
+               contralmte almte comod comte confr coord cónfr depto excmo presb profa
+               teléf afma afmo alfz apdo atta atte atto avda bibl cmdt cmte cnel conf
+               ctvo cént cónf diag dicc dpto ejem gral ibíd ilmo incl lcda lcdo ltda ltdo
+               mons ntra ntro pbro pdta pdte plza prof prov párr sgto srta univ art arz
+               bco cap cfr cit cta cte ctv cía cód der dir dra dña edo etc fdo fed fig
+               izq lic loc máx mín nro núm ofc pza pág rte sig sra sta sto tel tte uds
+               vda vdo vds vol aa av bs cc cf cp dd dn dr ee ej ff gr hh ib jj ms ne ob
+               oo pg pp rr sr ss ud uu vd vs ál íd óp
+          );
+          $ABBREVIATION_PERIOD_RE = join( '|', @words );
+     }
+     my $P = "\x{E000}";
+     $t =~ s/(?<![\p{L}\d])etc\.(?=\s|$)/etcétera./g;
+     # Inside a longer abbreviation: followed by another short word with a
+     # period (a. m., a. de j. c.) or preceded by one (i. e., bs. as.).
+     $t =~ s/(?<![\p{L}\d])(a|e|i|o|u|y|as|se|so|gen|vid)\.(?=\s*(?:de\s+)?\p{L}{1,4}[.\x{E000}])/$1$P/g;
+     $t =~ s/(?<=[\p{L}][.\x{E000}])(\s?)(a|e|i|o|u|y|as|se|so|gen|vid)\.(?=\s|$)/$1$2$P/g;
+     $t =~ s/(?<![\p{L}\d])no\.(?=\s*\d)/no$P/g;
+     $t =~ s/(?<![\p{L}\d])($ABBREVIATION_PERIOD_RE)\.(?=\s|$)/$1$P/g;
+     return $t;
+}
+
 sub expand_abbreviations_ortho {
 
      my $current_item = $_[0];
 
-     ############################################################################
-     # Process abbreviations in .VRT files                                      #
-     ############################################################################
-     if ( $vrt_format == 1 ) {
+     # Periods of abbreviations, protected by protect_abbreviation_periods().
+     $current_item =~ s/\x{E000}/./g;
 
-          #print STDOUT "VRT_ORTHO-ABBRV-BEF:$current_item\n";
+     #print STDOUT "NON-VRT_ABBREV-DEBUG-BEF:$current_item:\n";    # AD HOC DEBUG
 
-          # VRT: ABBREVIATIONS WITH SLASHES
-          $current_item =~ s/^a\/c$/a cuenta/g;
-          $current_item =~ s/^a\/f$/a favor/g;
-          $current_item =~ s/^c\/u$/cada uno/g;
-          $current_item =~ s/^s\/a$/sin año/g;
-          $current_item =~ s/^s\/e$/sin editorial/g;
-          $current_item =~ s/^s\/f$/sin fecha/g;
-          $current_item =~ s/^s\/l$/sin lugar/g;
-          $current_item =~ s/^s\/n$/sin número/g;
-          $current_item =~ s/^v\/s$/versus/g;
-          $current_item =~ s/^y\/o$/i o/g;
+     # ABBREVIATIONS WITH SLASHES
+     $current_item =~ s/(\W|^)a\/c(\W)/$1a cuenta /g;
+     $current_item =~ s/(\W|^)a\/f(\W)/$1a favor /g;
+     $current_item =~ s/(\W|^)c\/u(\W)/$1cada uno /g;
+     $current_item =~ s/(\W|^)s\/a(\W)/$1sin año /g;
+     $current_item =~ s/(\W|^)s\/e(\W)/$1sin editorial /g;
+     $current_item =~ s/(\W|^)s\/f(\W)/$1sin fecha /g;
+     $current_item =~ s/(\W|^)s\/l(\W)/$1sin lugar /g;
+     $current_item =~ s/(\W|^)s\/n(\W)/$1sin número /g;
+     $current_item =~ s/(\W|^)v\/s(\W)/$1versus /g;
+     $current_item =~ s/(\W|^)y\/o(\W)/$1i o /g;
 
-          # VRT: ABBREVIATIONS WITH TWO PERIODS
-          $current_item =~ s/^a\.c(|\.)$/ántes de crísto/g;
-          $current_item =~ s/^a\.d(|\.)$/áno dómini/g;
-          $current_item =~ s/^a\.de(|\.)$/ántes de/g;
-          $current_item =~ s/^a\.de¬c(|\.)$/ántes de crísto/g;
-          $current_item =~ s/^a\.m(|\.)$/ánte merídiem/g;
-          $current_item =~ s/^a\.r(|\.)$/altéza reál/g;
-          $current_item =~ s/^a\.t(|\.)$/antíguo testaménto/g;
-          $current_item =~ s/^bs\.as(|\.)$/buénos áires/g;
-          $current_item =~ s/^c\.a(|\.)$/compañía anónima/g;
-          $current_item =~ s/^c\.f(|\.)$/capitál federál/g;
-          $current_item =~ s/^c\.i(|\.)$/cédula de identidád/g;
-          $current_item =~ s/^c\.p(|\.)$/código postál/g;
-          $current_item =~ s/^cap\.fed(|\.)$/capitál federál/g;
-          $current_item =~ s/^d\.c(|\.)$/después de crísto/g;
-          $current_item =~ s/^d\.de(|\.)$/después de/g;
-          $current_item =~ s/^d\.de¬c(|\.)$/después de crísto/g;
-          $current_item =~ s/^d\.f(|\.)$/distríto federál/g;
-          $current_item =~ s/^dd\.hh$/deréchos humános/g;
-          $current_item =~ s/^e\.c(|\.)$/éra común/g;
-          $current_item =~ s/^e\.u(|\.)$/estádos unídos/g;
-          $current_item =~ s/^ee\.uu(|\.)$/estádos unídos/g;
-          $current_item =~ s/^f\.c(|\.)$/ferrocarríl/g;
-          $current_item =~ s/^ff\.aa(|\.)$/fuérzas armádas/g;
-          $current_item =~ s/^ff\.cc(|\.)$/ferrocarríles/g;
-          $current_item =~ s/^ff\.ee(|\.)$/ferrocarríles del estádo/g;
-          $current_item =~ s/^i\.e(|\.)$/íd ést/g;
-          $current_item =~ s/^jj\.cc(|\.)$/juventúdes comunístas/g;
-          $current_item =~ s/^jj\.oo(|\.)$/juégos olímpicos/g;
-          $current_item =~ s/^k\.o(|\.)$/nocáut/g;
-          $current_item =~ s/^l\.c(|\.)$/lóco citáto/g;
-          $current_item =~ s/^loc\.cit(|\.)$/lóco citáto/g;
-          $current_item =~ s/^m\.n(|\.)$/monéda nacionál/g;
-          $current_item =~ s/^n\.b(|\.)$/nóta béne/g;
-          $current_item =~ s/^n\.del(|\.)$/nóta del/g;
-          $current_item =~ s/^ob\.cit(|\.)$/óbra citáda/g;
-          $current_item =~ s/^oo\.pp(|\.)$/óbras públicas/g;
-          $current_item =~ s/^p\.d(|\.)$/posdáta/g;
-          $current_item =~ s/^p\.ej(|\.)$/por ejémplo/g;
-          $current_item =~ s/^p\.ejem(|\.)$/por ejémplo/g;
-          $current_item =~ s/^p\.m(|\.)$/póst merídiem/g;
-          $current_item =~ s/^p\.s(|\.)$/póst scríptum/g;
-          $current_item =~ s/^rr\.hh(|\.)$/recúrsos humános/g;
-          $current_item =~ s/^s\.a(|\.)$/sin áño/g;
-          $current_item =~ s/^s\.a(|\.)$/sociedád anónima/g;
-          $current_item =~ s/^s\.d(|\.)$/síne dáta/g;
-          $current_item =~ s/^s\.f(|\.)$/sín fécha/g;
-          $current_item =~ s/^s\.l(|\.)$/sín lugár/g;
-          $current_item =~ s/^s\.n(|\.)$/sín número/g;
-          $current_item =~ s/^u\.e(|\.)$/unión européa/g;
-          $current_item =~ s/^v\.g(|\.)$/vérbi grátia/g;
-          $current_item =~ s/^v\.gr(|\.)$/vérbi grátia/g;
-          $current_item =~ s/^v\.s(|\.)$/vuéstra señoría/g;
-          $current_item =~ s/^w\.c(|\.)$/doblevesé/g;
-          $current_item =~ s/^óp\.cit(|\.)$/ópere citáto/g;
+     # ABBREVIATIONS WITH THREE PERIODS
+     $current_item =~ s/(\W|^)a\.( |)de j\.( |)c\./$1antes de jesucristo/g;
+     $current_item =~ s/(\W|^)a\.( |)j\.( |)c\./$1antes de jesucristo/g;
+     $current_item =~ s/(\W|^)d\.( |)de j\.( |)c\./$1después de jesucristo/g;
+     $current_item =~ s/(\W|^)d\.( |)j\.( |)c\./$1después de jesucristo/g;
+     $current_item =~ s/(\W|^)o\.( |)e\.( |)a\./$1oéa/g;
+     $current_item =~ s/(\W|^)o\.( |)n\.( |)u\./$1ónu/g;
+     $current_item =~ s/(\W|^)p\.( |)v\.( |)p\./$1precio de venta al público/g;
+     $current_item =~ s/(\W|^)r\.( |)p\.( |)m\./$1revoluciones por minuto/g;
 
-          # VRT: ABBREVIATIONS WITH THREE PERIODS
-          $current_item =~ s/^a\.de¬j\.c(|\.)$/ántes de jesucrísto/g;
-          $current_item =~ s/^a\.j\.c(|\.)$/ántes de jesucrísto/g;
-          $current_item =~ s/^d\.de¬j\.c(|\.)$/después de jesucrísto/g;
-          $current_item =~ s/^d\.j\.c(|\.)$/después de jesucrísto/g;
-          $current_item =~ s/^o\.e\.a(|\.)$/oéa/g;
-          $current_item =~ s/^o\.n\.u(|\.)$/ónu/g;
-          $current_item =~ s/^p\.v\.p(|\.)$/précio de vénta al público/g;
-          $current_item =~ s/^r\.p\.m(|\.)$/revoluciónes por minúto/g;
+     # ABBREVIATIONS WITH TWO PERIODS
+     $current_item =~ s/(\W|^)a\.( |)c\./$1antes de cristo/g;
+     $current_item =~ s/(\W|^)a\.( |)d\./$1ano dómini/g;
+     $current_item =~ s/(\W|^)a\.( |)de c\./$1antes de cristo/g;
+     $current_item =~ s/(\W|^)a\.( |)m\./$1ante merídiem/g;
+     $current_item =~ s/(\W|^)a\.( |)r\./$1alteza real/g;
+     $current_item =~ s/(\W|^)a\.( |)t\./$1antiguo testamento/g;
+     $current_item =~ s/(\W|^)bs\.( |)as\./$1buenos aires/g;
+     $current_item =~ s/(\W|^)c\.( |)a\./$1compañía anónima/g;
+     $current_item =~ s/(\W|^)c\.( |)f\./$1capital federal/g;
+     $current_item =~ s/(\W|^)c\.( |)i\./$1cédula de identidad/g;
+     $current_item =~ s/(\W|^)c\.( |)p\./$1código postal/g;
+     $current_item =~ s/(\W|^)cap\.( |)fed\./$1capital federal/g;
+     $current_item =~ s/(\W|^)d\.( |)c\./$1después de cristo/g;
+     $current_item =~ s/(\W|^)d\.( |)de c\./$1después de cristo/g;
+     $current_item =~ s/(\W|^)d\.( |)f\./$1distrito federal/g;
+     $current_item =~ s/(\W|^)dd\.( |)hh\./$1derechos humanos/g;
+     $current_item =~ s/(\W|^)e\.( |)c\./$1era común/g;
+     $current_item =~ s/(\W|^)e\.( |)u\./$1estados unidos/g;
+     $current_item =~ s/(\W|^)ee\.( |)uu\./$1estados unidos/g;
+     $current_item =~ s/(\W|^)f\.( |)c\./$1ferrocarril/g;
+     $current_item =~ s/(\W|^)ff\.( |)aa\./$1fuerzas armadas/g;
+     $current_item =~ s/(\W|^)ff\.( |)cc\./$1ferrocarriles/g;
+     $current_item =~ s/(\W|^)ff\.( |)ee\./$1ferrocarriles del estado/g;
+     $current_item =~ s/(\W|^)i\.( |)e\./$1id est/g;
+     $current_item =~ s/(\W|^)jj\.( |)cc\./$1juventudes comunistas/g;
+     $current_item =~ s/(\W|^)jj\.( |)oo\./$1juegos olímpicos/g;
+     $current_item =~ s/(\W|^)k\.( |)o\./$1nocaut/g;
+     $current_item =~ s/(\W|^)l\.( |)c\./$1loco citato/g;
+     $current_item =~ s/(\W|^)loc\.( |)cit\./$1loco citato/g;
+     $current_item =~ s/(\W|^)m\.( |)n\./$1moneda nacional/g;
+     $current_item =~ s/(\W|^)n\.( |)b\./$1nota bene/g;
+     $current_item =~ s/(\W|^)n\.( |)del t\./$1nota del traductor/g;
+     $current_item =~ s/(\W|^)ob\.( |)cit\./$1obra citada/g;
+     $current_item =~ s/(\W|^)oo\.( |)pp\./$1obras públicas/g;
+     $current_item =~ s/(\W|^)p\.( |)d\./$1posdata/g;
+     $current_item =~ s/(\W|^)p\.( |)ej\./$1por ejemplo/g;
+     $current_item =~ s/(\W|^)p\.( |)ejem\./$1por ejemplo/g;
+     $current_item =~ s/(\W|^)p\.( |)m\./$1post merídiem/g;
+     $current_item =~ s/(\W|^)p\.( |)s\./$1post scríptum/g;
+     $current_item =~ s/(\W|^)rr\.( |)hh\./$1recursos humanos/g;
+     $current_item =~ s/(\W|^)s\.( |)a\./$1sin año/g;
+     $current_item =~ s/(\W|^)s\.( |)a\./$1sociedad anónima/g;
+     $current_item =~ s/(\W|^)s\.( |)d\./$1sine data/g;
+     $current_item =~ s/(\W|^)s\.( |)f\./$1sin fecha/g;
+     $current_item =~ s/(\W|^)s\.( |)l\./$1sin lugar/g;
+     $current_item =~ s/(\W|^)s\.( |)n\./$1sin número/g;
+     $current_item =~ s/(\W|^)u\.( |)e\./$1unión europea/g;
+     $current_item =~ s/(\W|^)v\.( |)g\./$1verbi gratia/g;
+     $current_item =~ s/(\W|^)v\.( |)gr\./$1verbi gratia/g;
+     $current_item =~ s/(\W|^)v\.( |)s\./$1vuestra señoría/g;
+     $current_item =~ s/(\W|^)w\.( |)c\./$1doblevesé/g;
+     $current_item =~ s/(\W|^)óp\.( |)cit\./$1ópere citato/g;
 
-          # VRT: ABBREVIATIONS WITH NO PUNCTUATION, BUT ODD CHARACTERS
-          $current_item =~ s/^n°$/número /g;
-          $current_item =~ s/^nº$/número /g;
-          $current_item =~ s/^v°( |)b°$/vísto buéno/g;
-          $current_item =~ s/^vº( |)bº$/vísto buéno/g;
+     # ABBREVIATIONS WITH NO PUNCTUATION, BUT ODD CHARACTERS
+     $current_item =~ s/(\W|^)n°/$1número /g;
+     $current_item =~ s/(\W|^)nº/$1número /g;
+     $current_item =~ s/(\W|^)v°( |)b°/$1visto bueno/g;
+     $current_item =~ s/(\W|^)vº( |)bº/$1visto bueno/g;
 
-          # VRT: ABBREVIATIONS WITH ONE PERIOD, AT END.
-          $current_item =~ s/^afma(|\.)$/afectísima/g;
-          $current_item =~ s/^afmo(|\.)$/afectísimo/g;
-          $current_item =~ s/^alfz(|\.)$/alférez/g;
-          $current_item =~ s/^almte(|\.)$/almirante/g;
-          $current_item =~ s/^apdo(|\.)$/apartado/g;
-          $current_item =~ s/^art(|\.)$/artículo/g;
-          $current_item =~ s/^arz(|\.)$/arzobispo/g;
-          $current_item =~ s/^atta(|\.)$/atenta/g;
-          $current_item =~ s/^atte(|\.)$/atentamente/g;
-          $current_item =~ s/^atto(|\.)$/atento/g;
-          $current_item =~ s/^av(|\.)$/avenida/g;
-          $current_item =~ s/^avda(|\.)$/avenida/g;
-          $current_item =~ s/^bco(|\.)$/banco/g;
-          $current_item =~ s/^bibl(|\.)$/biblioteca/g;
-          $current_item =~ s/^cap(|\.)$/capítulo/g;
-          $current_item =~ s/^cf(|\.)$/confere/g;
-          $current_item =~ s/^cfr(|\.)$/confere/g;
-          $current_item =~ s/^cmdt(|\.)$/comandante/g;
-          $current_item =~ s/^cmte(|\.)$/comandante/g;
-          $current_item =~ s/^cnel(|\.)$/coronel/g;
-          $current_item =~ s/^comod(|\.)$/comodoro/g;
-          $current_item =~ s/^comte(|\.)$/comandante/g;
-          $current_item =~ s/^conf(|\.)$/confere/g;
-          $current_item =~ s/^confr(|\.)$/confere/g;
-          $current_item =~ s/^contralmte(|\.)$/contralmirante/g;
-          $current_item =~ s/^coord(|\.)$/coordinador/g;
-          $current_item =~ s/^cp(|\.)$/compárese/g;
-          $current_item =~ s/^cta(|\.)$/cuenta/g;
-          $current_item =~ s/^cte(|\.)$/corriente/g;
-          $current_item =~ s/^ctv(|\.)$/centavo/g;
-          $current_item =~ s/^ctvo(|\.)$/centavo/g;
-          $current_item =~ s/^cént(|\.)$/céntimo/g;
-          $current_item =~ s/^cía(|\.)$/compañía/g;
-          $current_item =~ s/^cód(|\.)$/código/g;
-          $current_item =~ s/^cónf(|\.)$/confere/g;
-          $current_item =~ s/^cónfr(|\.)$/confere/g;
-          $current_item =~ s/^depto(|\.)$/departamento/g;
-          $current_item =~ s/^der(|\.)$/derecho/g;
-          $current_item =~ s/^diag(|\.)$/diagonal/g;
-          $current_item =~ s/^dicc(|\.)$/diccionario/g;
-          $current_item =~ s/^dir(|\.)$/director/g;
-          $current_item =~ s/^dn(|\.)$/don/g;
-          $current_item =~ s/^dpto(|\.)$/departamento/g;
-          $current_item =~ s/^dr(|\.)$/doctor/g;
-          $current_item =~ s/^dra(|\.)$/doctora/g;
-          $current_item =~ s/^dña(|\.)$/doña/g;
-          $current_item =~ s/^edo(|\.)$/estado/g;
-          $current_item =~ s/^ej(|\.)$/ejemplo/g;
-          $current_item =~ s/^et ál(|\.)$/et álii/g;
-          $current_item =~ s/^etc(|\.)$/etcétera/g;
-          $current_item =~ s/^etc\.(|\.)$/etcétera\./g;           # Catch "etc..", i.e. "etc." at end of sentence.
-          $current_item =~ s/^excmo(|\.)$/excelentísimo/g;
-          $current_item =~ s/^fdo(|\.)$/firmado/g;
-          $current_item =~ s/^fig(|\.)$/figura/g;
-          $current_item =~ s/^gen(|\.)$/general/g;
-          $current_item =~ s/^gral(|\.)$/general/g;
-          $current_item =~ s/^ib(|\.)$/ibídem/g;
-          $current_item =~ s/^ibíd(|\.)$/ibídem/g;
-          $current_item =~ s/^ilmo(|\.)$/ilustrísimo/g;
-          $current_item =~ s/^incl(|\.)$/inclusive/g;
-          $current_item =~ s/^izq(|\.)$/izquierda/g;
-          $current_item =~ s/^lcda(|\.)$/licenciada/g;
-          $current_item =~ s/^lcdo(|\.)$/licenciado/g;
-          $current_item =~ s/^lic(|\.)$/licenciado/g;
-          $current_item =~ s/^ltda(|\.)$/limitada/g;
-          $current_item =~ s/^ltdo(|\.)$/limitado/g;
-          $current_item =~ s/^mons(|\.)$/monseñor/g;
-          $current_item =~ s/^ms(|\.)$/manuscrito/g;
-          $current_item =~ s/^máx(|\.)$/máximo/g;
-          $current_item =~ s/^mín(|\.)$/mínimo/g;
-          $current_item =~ s/^ne(|\.)$/noreste/g;
-          $current_item =~ s/^nro(|\.)$/número/g;
-          $current_item =~ s/^ntra(|\.)$/nuestra/g;
-          $current_item =~ s/^ntro(|\.)$/nuestro/g;
-          $current_item =~ s/^núm(|\.)$/número/g;
-          $current_item =~ s/^ob(|\.)$/obispo/g;
-          $current_item =~ s/^ofc(|\.)$/oficina/g;
-          $current_item =~ s/^pbro(|\.)$/presbítero/g;
-          $current_item =~ s/^pdta(|\.)$/presidenta/g;
-          $current_item =~ s/^pdte(|\.)$/presidente/g;
-          $current_item =~ s/^pg(|\.)$/página/g;
-          $current_item =~ s/^plza(|\.)$/plaza/g;
-          $current_item =~ s/^pp(|\.)$/páginas/g;
-          $current_item =~ s/^presb(|\.)$/presbítero/g;
-          $current_item =~ s/^prof(|\.)$/profesor/g;
-          $current_item =~ s/^profa(|\.)$/profesora/g;
-          $current_item =~ s/^prov(|\.)$/provincia/g;
-          $current_item =~ s/^pza(|\.)$/plaza/g;
-          $current_item =~ s/^pág(|\.)$/páginas/g;
-          $current_item =~ s/^párr(|\.)$/párrafo/g;
-          $current_item =~ s/^rte(|\.)$/remitente/g;
-          $current_item =~ s/^se(|\.)$/sudeste/g;
-          $current_item =~ s/^sgto(|\.)$/sargento/g;
-          $current_item =~ s/^sig(|\.)$/siguiente/g;
-          $current_item =~ s/^so(|\.)$/sudoeste/g;
-          $current_item =~ s/^sr(|\.)$/señor/g;
-          $current_item =~ s/^sra(|\.)$/señora/g;
-          $current_item =~ s/^srta(|\.)$/señorita/g;
-          $current_item =~ s/^ss(|\.)$/siguientes/g;
-          $current_item =~ s/^sta(|\.)$/santa/g;
-          $current_item =~ s/^sto(|\.)$/santo/g;
-          $current_item =~ s/^tel(|\.)$/teléfono/g;
-          $current_item =~ s/^teléf(|\.)$/teléfono/g;
-          $current_item =~ s/^tte(|\.)$/teniente/g;
-          $current_item =~ s/^ud(|\.)$/usted/g;
-          $current_item =~ s/^uds(|\.)$/ustedes/g;
-          $current_item =~ s/^univ(|\.)$/universidad/g;
-          $current_item =~ s/^vd(|\.)$/usted/g;
-          $current_item =~ s/^vda(|\.)$/viuda/g;
-          $current_item =~ s/^vdo(|\.)$/viudo/g;
-          $current_item =~ s/^vds(|\.)$/ustedes/g;
-          $current_item =~ s/^vid(|\.)$/vide/g;
-          $current_item =~ s/^vol(|\.)$/volumen/g;
-          $current_item =~ s/^vs(|\.)$/versus/g;
-          $current_item =~ s/^íd(|\.)$/ídem/g;
+     # MISC ABBREVIATIONS
 
-          # VRT: SINGLE LETTERS WITH ONE PERIOD FOLLOWING ("J. L. Borges")
-          $current_item =~ s/^a(|\.)$/a /g;
-          $current_item =~ s/^b(|\.)$/be /g;
-          $current_item =~ s/^c(|\.)$/se /g;
-          $current_item =~ s/^d(|\.)$/de /g;
-          $current_item =~ s/^e(|\.)$/e /g;
-          $current_item =~ s/^f(|\.)$/éfe /g;
-          $current_item =~ s/^g(|\.)$/je /g;
-          $current_item =~ s/^h(|\.)$/áche /g;
-          $current_item =~ s/^i(|\.)$/i /g;
-          $current_item =~ s/^j(|\.)$/jóta /g;
-          $current_item =~ s/^k(|\.)$/ka /g;
-          $current_item =~ s/^l(|\.)$/éle /g;
-          $current_item =~ s/^m(|\.)$/éme /g;
-          $current_item =~ s/^n(|\.)$/éne /g;
-          $current_item =~ s/^o(|\.)$/o /g;
-          $current_item =~ s/^p(|\.)$/pe /g;
-          $current_item =~ s/^q(|\.)$/cu /g;
-          $current_item =~ s/^r(|\.)$/érre /g;
-          $current_item =~ s/^s(|\.)$/ése /g;
-          $current_item =~ s/^t(|\.)$/te /g;
-          $current_item =~ s/^u(|\.)$/u /g;
-          $current_item =~ s/^v(|\.)$/$name_for_v /g;
-          $current_item =~ s/^w(|\.)$/doblebé /g;
-          $current_item =~ s/^x(|\.)$/équis /g;
-          $current_item =~ s/^ñ(|\.)$/éñe /g;
+     # ABBREVIATIONS WITH ONE PERIOD, AT END.
+     $current_item =~ s/(\W|^)afma\./$1afectísima/g;
+     $current_item =~ s/(\W|^)afmo\./$1afectísimo/g;
+     $current_item =~ s/(\W|^)alfz\./$1alférez/g;
+     $current_item =~ s/(\W|^)almte\./$1almirante/g;
+     $current_item =~ s/(\W|^)apdo\./$1apartado/g;
+     $current_item =~ s/(\W|^)art\./$1artículo/g;
+     $current_item =~ s/(\W|^)arz\./$1arzobispo/g;
+     $current_item =~ s/(\W|^)atta\./$1atenta/g;
+     $current_item =~ s/(\W|^)atte\./$1atentamente/g;
+     $current_item =~ s/(\W|^)atto\./$1atento/g;
+     $current_item =~ s/(\W|^)av\./$1avenida/g;
+     $current_item =~ s/(\W|^)avda\./$1avenida/g;
+     $current_item =~ s/(\W|^)bco\./$1banco/g;
+     $current_item =~ s/(\W|^)bibl\./$1biblioteca/g;
+     $current_item =~ s/(\W|^)cap\./$1capítulo/g;
+     $current_item =~ s/(\W|^)cént\./$1céntimo/g;
+     $current_item =~ s/(\W|^)cf\./$1confere/g;
+     $current_item =~ s/(\W|^)cfr\./$1confere/g;
+     $current_item =~ s/(\W|^)cía\./$1 compañía/g;
+     $current_item =~ s/(\W|^)cmdt\./$1comandante/g;
+     $current_item =~ s/(\W|^)cmte\./$1comandante/g;
+     $current_item =~ s/(\W|^)cnel\./$1coronel/g;
+     $current_item =~ s/(\W|^)cód\./$1código/g;
+     $current_item =~ s/(\W|^)comod\./$1comodoro/g;
+     $current_item =~ s/(\W|^)comte\./$1comandante/g;
+     $current_item =~ s/(\W|^)conf\./$1confere/g;
+     $current_item =~ s/(\W|^)cónf\./$1confere/g;
+     $current_item =~ s/(\W|^)confr\./$1confere/g;
+     $current_item =~ s/(\W|^)cónfr\./$1confere/g;
+     $current_item =~ s/(\W|^)contralmte\./$1contralmirante/g;
+     $current_item =~ s/(\W|^)coord\./$1coordinador/g;
+     $current_item =~ s/(\W|^)cp\./$1compárese/g;
+     $current_item =~ s/(\W|^)cta\./$1cuenta/g;
+     $current_item =~ s/(\W|^)cte\./$1corriente/g;
+     $current_item =~ s/(\W|^)ctv\./$1centavo/g;
+     $current_item =~ s/(\W|^)ctvo\./$1centavo/g;
+     $current_item =~ s/(\W|^)depto\./$1departamento/g;
+     $current_item =~ s/(\W|^)der\./$1derecho/g;
+     $current_item =~ s/(\W|^)diag\./$1diagonal/g;
+     $current_item =~ s/(\W|^)dicc\./$1diccionario/g;
+     $current_item =~ s/(\W|^)dir\./$1director/g;
+     $current_item =~ s/(\W|^)dn\./$1don/g;
+     $current_item =~ s/(\W|^)dña\./$1doña/g;
+     $current_item =~ s/(\W|^)dpto\./$1departamento/g;
+     $current_item =~ s/(\W|^)dr\./$1doctor/g;
+     $current_item =~ s/(\W|^)dra\./$1doctora/g;
+     $current_item =~ s/(\W|^)edo\./$1estado/g;
+     $current_item =~ s/(\W|^)ej\./$1ejemplo/g;
+     $current_item =~ s/(\W|^)et ál\./$1et álii/g;
+     $current_item =~ s/(\W|^)etc\./$1etcétera/g;
+     $current_item =~ s/(\W|^)etc\.\./$1etcétera\./g;           # Catch "etc..", i.e. "etc." at end of sentence.
+     $current_item =~ s/(\W|^)excmo\./$1excelentísimo/g;
+     $current_item =~ s/(\W|^)fdo\./$1firmado/g;
+     $current_item =~ s/(\W|^)fig\./$1figura/g;
+     $current_item =~ s/(\W|^)gen\./$1general/g;
+     $current_item =~ s/(\W|^)gral\./$1general/g;
+     $current_item =~ s/(\W|^)ib\./$1ibídem/g;
+     $current_item =~ s/(\W|^)ibíd\./$1ibídem/g;
+     $current_item =~ s/(\W|^)íd\./$1ídem/g;
+     $current_item =~ s/(\W|^)ilmo\./$1ilustrísimo/g;
+     $current_item =~ s/(\W|^)incl\./$1inclusive/g;
+     $current_item =~ s/(\W|^)izq\./$1izquierda/g;
+     $current_item =~ s/(\W|^)lcda\./$1licenciada/g;
+     $current_item =~ s/(\W|^)lcdo\./$1licenciado/g;
+     $current_item =~ s/(\W|^)lic\./$1licenciado/g;
+     $current_item =~ s/(\W|^)ltda\./$1limitáda/g;
+     $current_item =~ s/(\W|^)ltdo\./$1limitádo/g;
+     $current_item =~ s/(\W|^)máx\./$1máximo/g;
+     $current_item =~ s/(\W|^)mín\./$1mínimo/g;
+     $current_item =~ s/(\W|^)mons\./$1monseñór/g;
+     $current_item =~ s/(\W|^)ms\./$1manuscríto/g;
+     $current_item =~ s/(\W|^)ne\./$1noréste/g;
+     $current_item =~ s/(\W|^)no\.( |)(\d)/$1número$2$3/g;      # Fixed in 325: Only acts on "no." followed by number
+     $current_item =~ s/(\W|^)nro\./$1número/g;
+     $current_item =~ s/(\W|^)ntra\./$1nuéstra/g;
+     $current_item =~ s/(\W|^)ntro\./$1nuéstro/g;
+     $current_item =~ s/(\W|^)núm\./$1número/g;
+     $current_item =~ s/(\W|^)ob\./$1obíspo/g;
+     $current_item =~ s/(\W|^)ofc\./$1oficína/g;
+     $current_item =~ s/(\W|^)pág\./$1páginas/g;
+     $current_item =~ s/(\W|^)párr\./$1párrafo/g;
+     $current_item =~ s/(\W|^)pbro\./$1presbítero/g;
+     $current_item =~ s/(\W|^)pdta\./$1presidénta/g;
+     $current_item =~ s/(\W|^)pdte\./$1presidénte/g;
+     $current_item =~ s/(\W|^)pg\./$1página/g;
+     $current_item =~ s/(\W|^)plza\./$1pláza/g;
+     $current_item =~ s/(\W|^)pp\./$1páginas/g;
+     $current_item =~ s/(\W|^)presb\./$1presbítero/g;
+     $current_item =~ s/(\W|^)prof\./$1profesór/g;
+     $current_item =~ s/(\W|^)profa\./$1profesóra/g;
+     $current_item =~ s/(\W|^)prov\./$1província/g;
+     $current_item =~ s/(\W|^)pza\./$1 pláza/g;
+     $current_item =~ s/(\W|^)rte\./$1remiténte/g;
+     $current_item =~ s/(\W|^)se\./$1sudéste/g;
+     $current_item =~ s/(\W|^)sgto\./$1sargénto/g;
+     $current_item =~ s/(\W|^)sig\./$1siguiénte/g;
+     $current_item =~ s/(\W|^)so\./$1sudoéste/g;
+     $current_item =~ s/(\W|^)sr\./$1señór/g;
+     $current_item =~ s/(\W|^)sra\./$1señóra/g;
+     $current_item =~ s/(\W|^)srta\./$1señoríta/g;
+     $current_item =~ s/(\W|^)ss\./$1siguiéntes/g;
+     $current_item =~ s/(\W|^)sta\./$1sánta/g;
+     $current_item =~ s/(\W|^)sto\./$1sánto/g;
+     $current_item =~ s/(\W|^)tel\./$1teléfono/g;
+     $current_item =~ s/(\W|^)teléf\./$1teléfono/g;
+     $current_item =~ s/(\W|^)tte\./$1teniénte/g;
+     $current_item =~ s/(\W|^)ud\./$1ustéd/g;
+     $current_item =~ s/(\W|^)uds\./$1ustédes/g;
+     $current_item =~ s/(\W|^)univ\./$1universidád/g;
+     $current_item =~ s/(\W|^)vd\./$1ustéd/g;
+     $current_item =~ s/(\W|^)vda\./$1viúda/g;
+     $current_item =~ s/(\W|^)vdo\./$1viúdo/g;
+     $current_item =~ s/(\W|^)vds\./$1ustédes/g;
+     $current_item =~ s/(\W|^)vid\./$1víde/g;
+     $current_item =~ s/(\W|^)vol\./$1volúmen/g;
+     $current_item =~ s/(\W|^)vs\./$1vérsus/g;
 
-          # $current_item =~ s/^y(|\.)$/igriega /g; # For VRT, this turns conjunction "y" into letter.
-          $current_item =~ s/^z(|\.)$/séta /g;
+     # SINGLE LETTERS WITH ONE PERIOD FOLLOWING ("J. L. Borges")
+     $current_item =~ s/(\W|^)a\./$1a /g;
+     $current_item =~ s/(\W|^)b\./$1be /g;
+     $current_item =~ s/(\W|^)c\./$1se /g;
+     $current_item =~ s/(\W|^)d\./$1de /g;
+     $current_item =~ s/(\W|^)e\./$1e /g;
+     $current_item =~ s/(\W|^)f\./$1éfe /g;
+     $current_item =~ s/(\W|^)g\./$1je /g;
+     $current_item =~ s/(\W|^)h\./$1áche /g;
+     $current_item =~ s/(\W|^)i\./$1i /g;
+     $current_item =~ s/(\W|^)j\./$1jóta /g;
+     $current_item =~ s/(\W|^)k\./$1ka /g;
+     $current_item =~ s/(\W|^)l\./$1éle /g;
+     $current_item =~ s/(\W|^)m\./$1éme /g;
+     $current_item =~ s/(\W|^)n\./$1éne /g;
+     $current_item =~ s/(\W|^)ñ\./$1éñe /g;
+     $current_item =~ s/(\W|^)o\./$1o /g;
+     $current_item =~ s/(\W|^)p\./$1pe /g;
+     $current_item =~ s/(\W|^)q\./$1cu /g;
+     $current_item =~ s/(\W|^)r\./$1érre /g;
+     $current_item =~ s/(\W|^)s\./$1ése /g;
+     $current_item =~ s/(\W|^)t\./$1te /g;
+     $current_item =~ s/(\W|^)u\./$1u /g;
+     $current_item =~ s/(\W|^)v\./$1$name_for_v /g;
+     $current_item =~ s/(\W|^)w\./$1doblebé /g;
+     $current_item =~ s/(\W|^)x\./$1équis /g;
+     $current_item =~ s/(\W|^)y\./$1igriéga /g;
+     $current_item =~ s/(\W|^)z\./$1séta /g;
 
-          #print STDOUT "VRT_ORTHO-ABBRV-AFT:$current_item\n\n";
-     }
-     else {
-          ############################################################################
-          # Process abbreviations in .VRT files                                      #
-          ############################################################################
-
-          #print STDOUT "NON-VRT_ABBREV-DEBUG-BEF:$current_item:\n";    # AD HOC DEBUG
-
-          # ABBREVIATIONS WITH SLASHES
-          $current_item =~ s/(\W|^)a\/c(\W)/$1a cuenta /g;
-          $current_item =~ s/(\W|^)a\/f(\W)/$1a favor /g;
-          $current_item =~ s/(\W|^)c\/u(\W)/$1cada uno /g;
-          $current_item =~ s/(\W|^)s\/a(\W)/$1sin año /g;
-          $current_item =~ s/(\W|^)s\/e(\W)/$1sin editorial /g;
-          $current_item =~ s/(\W|^)s\/f(\W)/$1sin fecha /g;
-          $current_item =~ s/(\W|^)s\/l(\W)/$1sin lugar /g;
-          $current_item =~ s/(\W|^)s\/n(\W)/$1sin número /g;
-          $current_item =~ s/(\W|^)v\/s(\W)/$1versus /g;
-          $current_item =~ s/(\W|^)y\/o(\W)/$1i o /g;
-
-          # ABBREVIATIONS WITH THREE PERIODS
-          $current_item =~ s/(\W|^)a\.( |)de j\.( |)c\./$1antes de jesucristo/g;
-          $current_item =~ s/(\W|^)a\.( |)j\.( |)c\./$1antes de jesucristo/g;
-          $current_item =~ s/(\W|^)d\.( |)de j\.( |)c\./$1después de jesucristo/g;
-          $current_item =~ s/(\W|^)d\.( |)j\.( |)c\./$1después de jesucristo/g;
-          $current_item =~ s/(\W|^)o\.( |)e\.( |)a\./$1oéa/g;
-          $current_item =~ s/(\W|^)o\.( |)n\.( |)u\./$1ónu/g;
-          $current_item =~ s/(\W|^)p\.( |)v\.( |)p\./$1precio de venta al público/g;
-          $current_item =~ s/(\W|^)r\.( |)p\.( |)m\./$1revoluciones por minuto/g;
-
-          # ABBREVIATIONS WITH TWO PERIODS
-          $current_item =~ s/(\W|^)a\.( |)c\./$1antes de cristo/g;
-          $current_item =~ s/(\W|^)a\.( |)d\./$1ano dómini/g;
-          $current_item =~ s/(\W|^)a\.( |)de c\./$1antes de cristo/g;
-          $current_item =~ s/(\W|^)a\.( |)m\./$1ante merídiem/g;
-          $current_item =~ s/(\W|^)a\.( |)r\./$1alteza real/g;
-          $current_item =~ s/(\W|^)a\.( |)t\./$1antiguo testamento/g;
-          $current_item =~ s/(\W|^)bs\.( |)as\./$1buenos aires/g;
-          $current_item =~ s/(\W|^)c\.( |)a\./$1compañía anónima/g;
-          $current_item =~ s/(\W|^)c\.( |)f\./$1capital federal/g;
-          $current_item =~ s/(\W|^)c\.( |)i\./$1cédula de identidad/g;
-          $current_item =~ s/(\W|^)c\.( |)p\./$1código postal/g;
-          $current_item =~ s/(\W|^)cap\.( |)fed\./$1capital federal/g;
-          $current_item =~ s/(\W|^)d\.( |)c\./$1después de cristo/g;
-          $current_item =~ s/(\W|^)d\.( |)de c\./$1después de cristo/g;
-          $current_item =~ s/(\W|^)d\.( |)f\./$1distrito federal/g;
-          $current_item =~ s/(\W|^)dd\.( |)hh\./$1derechos humanos/g;
-          $current_item =~ s/(\W|^)e\.( |)c\./$1era común/g;
-          $current_item =~ s/(\W|^)e\.( |)u\./$1estados unidos/g;
-          $current_item =~ s/(\W|^)ee\.( |)uu\./$1estados unidos/g;
-          $current_item =~ s/(\W|^)f\.( |)c\./$1ferrocarril/g;
-          $current_item =~ s/(\W|^)ff\.( |)aa\./$1fuerzas armadas/g;
-          $current_item =~ s/(\W|^)ff\.( |)cc\./$1ferrocarriles/g;
-          $current_item =~ s/(\W|^)ff\.( |)ee\./$1ferrocarriles del estado/g;
-          $current_item =~ s/(\W|^)i\.( |)e\./$1id est/g;
-          $current_item =~ s/(\W|^)jj\.( |)cc\./$1juventudes comunistas/g;
-          $current_item =~ s/(\W|^)jj\.( |)oo\./$1juegos olímpicos/g;
-          $current_item =~ s/(\W|^)k\.( |)o\./$1nocaut/g;
-          $current_item =~ s/(\W|^)l\.( |)c\./$1loco citato/g;
-          $current_item =~ s/(\W|^)loc\.( |)cit\./$1loco citato/g;
-          $current_item =~ s/(\W|^)m\.( |)n\./$1moneda nacional/g;
-          $current_item =~ s/(\W|^)n\.( |)b\./$1nota bene/g;
-          $current_item =~ s/(\W|^)n\.( |)del t\./$1nota del traductor/g;
-          $current_item =~ s/(\W|^)ob\.( |)cit\./$1obra citada/g;
-          $current_item =~ s/(\W|^)oo\.( |)pp\./$1obras públicas/g;
-          $current_item =~ s/(\W|^)p\.( |)d\./$1posdata/g;
-          $current_item =~ s/(\W|^)p\.( |)ej\./$1por ejemplo/g;
-          $current_item =~ s/(\W|^)p\.( |)ejem\./$1por ejemplo/g;
-          $current_item =~ s/(\W|^)p\.( |)m\./$1post merídiem/g;
-          $current_item =~ s/(\W|^)p\.( |)s\./$1post scríptum/g;
-          $current_item =~ s/(\W|^)rr\.( |)hh\./$1recursos humanos/g;
-          $current_item =~ s/(\W|^)s\.( |)a\./$1sin año/g;
-          $current_item =~ s/(\W|^)s\.( |)a\./$1sociedad anónima/g;
-          $current_item =~ s/(\W|^)s\.( |)d\./$1sine data/g;
-          $current_item =~ s/(\W|^)s\.( |)f\./$1sin fecha/g;
-          $current_item =~ s/(\W|^)s\.( |)l\./$1sin lugar/g;
-          $current_item =~ s/(\W|^)s\.( |)n\./$1sin número/g;
-          $current_item =~ s/(\W|^)u\.( |)e\./$1unión europea/g;
-          $current_item =~ s/(\W|^)v\.( |)g\./$1verbi gratia/g;
-          $current_item =~ s/(\W|^)v\.( |)gr\./$1verbi gratia/g;
-          $current_item =~ s/(\W|^)v\.( |)s\./$1vuestra señoría/g;
-          $current_item =~ s/(\W|^)w\.( |)c\./$1doblevesé/g;
-          $current_item =~ s/(\W|^)óp\.( |)cit\./$1ópere citato/g;
-
-          # ABBREVIATIONS WITH NO PUNCTUATION, BUT ODD CHARACTERS
-          $current_item =~ s/(\W|^)n°/$1número /g;
-          $current_item =~ s/(\W|^)nº/$1número /g;
-          $current_item =~ s/(\W|^)v°( |)b°/$1visto bueno/g;
-          $current_item =~ s/(\W|^)vº( |)bº/$1visto bueno/g;
-
-          # MISC ABBREVIATIONS
-
-          # ABBREVIATIONS WITH ONE PERIOD, AT END.
-          $current_item =~ s/(\W|^)afma\./$1afectísima/g;
-          $current_item =~ s/(\W|^)afmo\./$1afectísimo/g;
-          $current_item =~ s/(\W|^)alfz\./$1alférez/g;
-          $current_item =~ s/(\W|^)almte\./$1almirante/g;
-          $current_item =~ s/(\W|^)apdo\./$1apartado/g;
-          $current_item =~ s/(\W|^)art\./$1artículo/g;
-          $current_item =~ s/(\W|^)arz\./$1arzobispo/g;
-          $current_item =~ s/(\W|^)atta\./$1atenta/g;
-          $current_item =~ s/(\W|^)atte\./$1atentamente/g;
-          $current_item =~ s/(\W|^)atto\./$1atento/g;
-          $current_item =~ s/(\W|^)av\./$1avenida/g;
-          $current_item =~ s/(\W|^)avda\./$1avenida/g;
-          $current_item =~ s/(\W|^)bco\./$1banco/g;
-          $current_item =~ s/(\W|^)bibl\./$1biblioteca/g;
-          $current_item =~ s/(\W|^)cap\./$1capítulo/g;
-          $current_item =~ s/(\W|^)cént\./$1céntimo/g;
-          $current_item =~ s/(\W|^)cf\./$1confere/g;
-          $current_item =~ s/(\W|^)cfr\./$1confere/g;
-          $current_item =~ s/(\W|^)cía\./$1 compañía/g;
-          $current_item =~ s/(\W|^)cmdt\./$1comandante/g;
-          $current_item =~ s/(\W|^)cmte\./$1comandante/g;
-          $current_item =~ s/(\W|^)cnel\./$1coronel/g;
-          $current_item =~ s/(\W|^)cód\./$1código/g;
-          $current_item =~ s/(\W|^)comod\./$1comodoro/g;
-          $current_item =~ s/(\W|^)comte\./$1comandante/g;
-          $current_item =~ s/(\W|^)conf\./$1confere/g;
-          $current_item =~ s/(\W|^)cónf\./$1confere/g;
-          $current_item =~ s/(\W|^)confr\./$1confere/g;
-          $current_item =~ s/(\W|^)cónfr\./$1confere/g;
-          $current_item =~ s/(\W|^)contralmte\./$1contralmirante/g;
-          $current_item =~ s/(\W|^)coord\./$1coordinador/g;
-          $current_item =~ s/(\W|^)cp\./$1compárese/g;
-          $current_item =~ s/(\W|^)cta\./$1cuenta/g;
-          $current_item =~ s/(\W|^)cte\./$1corriente/g;
-          $current_item =~ s/(\W|^)ctv\./$1centavo/g;
-          $current_item =~ s/(\W|^)ctvo\./$1centavo/g;
-          $current_item =~ s/(\W|^)depto\./$1departamento/g;
-          $current_item =~ s/(\W|^)der\./$1derecho/g;
-          $current_item =~ s/(\W|^)diag\./$1diagonal/g;
-          $current_item =~ s/(\W|^)dicc\./$1diccionario/g;
-          $current_item =~ s/(\W|^)dir\./$1director/g;
-          $current_item =~ s/(\W|^)dn\./$1don/g;
-          $current_item =~ s/(\W|^)dña\./$1doña/g;
-          $current_item =~ s/(\W|^)dpto\./$1departamento/g;
-          $current_item =~ s/(\W|^)dr\./$1doctor/g;
-          $current_item =~ s/(\W|^)dra\./$1doctora/g;
-          $current_item =~ s/(\W|^)edo\./$1estado/g;
-          $current_item =~ s/(\W|^)ej\./$1ejemplo/g;
-          $current_item =~ s/(\W|^)et ál\./$1et álii/g;
-          $current_item =~ s/(\W|^)etc\./$1etcétera/g;
-          $current_item =~ s/(\W|^)etc\.\./$1etcétera\./g;           # Catch "etc..", i.e. "etc." at end of sentence.
-          $current_item =~ s/(\W|^)excmo\./$1excelentísimo/g;
-          $current_item =~ s/(\W|^)fdo\./$1firmado/g;
-          $current_item =~ s/(\W|^)fig\./$1figura/g;
-          $current_item =~ s/(\W|^)gen\./$1general/g;
-          $current_item =~ s/(\W|^)gral\./$1general/g;
-          $current_item =~ s/(\W|^)ib\./$1ibídem/g;
-          $current_item =~ s/(\W|^)ibíd\./$1ibídem/g;
-          $current_item =~ s/(\W|^)íd\./$1ídem/g;
-          $current_item =~ s/(\W|^)ilmo\./$1ilustrísimo/g;
-          $current_item =~ s/(\W|^)incl\./$1inclusive/g;
-          $current_item =~ s/(\W|^)izq\./$1izquierda/g;
-          $current_item =~ s/(\W|^)lcda\./$1licenciada/g;
-          $current_item =~ s/(\W|^)lcdo\./$1licenciado/g;
-          $current_item =~ s/(\W|^)lic\./$1licenciado/g;
-          $current_item =~ s/(\W|^)ltda\./$1limitáda/g;
-          $current_item =~ s/(\W|^)ltdo\./$1limitádo/g;
-          $current_item =~ s/(\W|^)máx\./$1máximo/g;
-          $current_item =~ s/(\W|^)mín\./$1mínimo/g;
-          $current_item =~ s/(\W|^)mons\./$1monseñór/g;
-          $current_item =~ s/(\W|^)ms\./$1manuscríto/g;
-          $current_item =~ s/(\W|^)ne\./$1noréste/g;
-          $current_item =~ s/(\W|^)no\.( |)(\d)/$1número$2$3/g;      # Fixed in 325: Only acts on "no." followed by number
-          $current_item =~ s/(\W|^)nro\./$1número/g;
-          $current_item =~ s/(\W|^)ntra\./$1nuéstra/g;
-          $current_item =~ s/(\W|^)ntro\./$1nuéstro/g;
-          $current_item =~ s/(\W|^)núm\./$1número/g;
-          $current_item =~ s/(\W|^)ob\./$1obíspo/g;
-          $current_item =~ s/(\W|^)ofc\./$1oficína/g;
-          $current_item =~ s/(\W|^)pág\./$1páginas/g;
-          $current_item =~ s/(\W|^)párr\./$1párrafo/g;
-          $current_item =~ s/(\W|^)pbro\./$1presbítero/g;
-          $current_item =~ s/(\W|^)pdta\./$1presidénta/g;
-          $current_item =~ s/(\W|^)pdte\./$1presidénte/g;
-          $current_item =~ s/(\W|^)pg\./$1página/g;
-          $current_item =~ s/(\W|^)plza\./$1pláza/g;
-          $current_item =~ s/(\W|^)pp\./$1páginas/g;
-          $current_item =~ s/(\W|^)presb\./$1presbítero/g;
-          $current_item =~ s/(\W|^)prof\./$1profesór/g;
-          $current_item =~ s/(\W|^)profa\./$1profesóra/g;
-          $current_item =~ s/(\W|^)prov\./$1província/g;
-          $current_item =~ s/(\W|^)pza\./$1 pláza/g;
-          $current_item =~ s/(\W|^)rte\./$1remiténte/g;
-          $current_item =~ s/(\W|^)se\./$1sudéste/g;
-          $current_item =~ s/(\W|^)sgto\./$1sargénto/g;
-          $current_item =~ s/(\W|^)sig\./$1siguiénte/g;
-          $current_item =~ s/(\W|^)so\./$1sudoéste/g;
-          $current_item =~ s/(\W|^)sr\./$1señór/g;
-          $current_item =~ s/(\W|^)sra\./$1señóra/g;
-          $current_item =~ s/(\W|^)srta\./$1señoríta/g;
-          $current_item =~ s/(\W|^)ss\./$1siguiéntes/g;
-          $current_item =~ s/(\W|^)sta\./$1sánta/g;
-          $current_item =~ s/(\W|^)sto\./$1sánto/g;
-          $current_item =~ s/(\W|^)tel\./$1teléfono/g;
-          $current_item =~ s/(\W|^)teléf\./$1teléfono/g;
-          $current_item =~ s/(\W|^)tte\./$1teniénte/g;
-          $current_item =~ s/(\W|^)ud\./$1ustéd/g;
-          $current_item =~ s/(\W|^)uds\./$1ustédes/g;
-          $current_item =~ s/(\W|^)univ\./$1universidád/g;
-          $current_item =~ s/(\W|^)vd\./$1ustéd/g;
-          $current_item =~ s/(\W|^)vda\./$1viúda/g;
-          $current_item =~ s/(\W|^)vdo\./$1viúdo/g;
-          $current_item =~ s/(\W|^)vds\./$1ustédes/g;
-          $current_item =~ s/(\W|^)vid\./$1víde/g;
-          $current_item =~ s/(\W|^)vol\./$1volúmen/g;
-          $current_item =~ s/(\W|^)vs\./$1vérsus/g;
-
-          # SINGLE LETTERS WITH ONE PERIOD FOLLOWING ("J. L. Borges")
-          $current_item =~ s/(\W|^)a\./$1a /g;
-          $current_item =~ s/(\W|^)b\./$1be /g;
-          $current_item =~ s/(\W|^)c\./$1se /g;
-          $current_item =~ s/(\W|^)d\./$1de /g;
-          $current_item =~ s/(\W|^)e\./$1e /g;
-          $current_item =~ s/(\W|^)f\./$1éfe /g;
-          $current_item =~ s/(\W|^)g\./$1je /g;
-          $current_item =~ s/(\W|^)h\./$1áche /g;
-          $current_item =~ s/(\W|^)i\./$1i /g;
-          $current_item =~ s/(\W|^)j\./$1jóta /g;
-          $current_item =~ s/(\W|^)k\./$1ka /g;
-          $current_item =~ s/(\W|^)l\./$1éle /g;
-          $current_item =~ s/(\W|^)m\./$1éme /g;
-          $current_item =~ s/(\W|^)n\./$1éne /g;
-          $current_item =~ s/(\W|^)ñ\./$1éñe /g;
-          $current_item =~ s/(\W|^)o\./$1o /g;
-          $current_item =~ s/(\W|^)p\./$1pe /g;
-          $current_item =~ s/(\W|^)q\./$1cu /g;
-          $current_item =~ s/(\W|^)r\./$1érre /g;
-          $current_item =~ s/(\W|^)s\./$1ése /g;
-          $current_item =~ s/(\W|^)t\./$1te /g;
-          $current_item =~ s/(\W|^)u\./$1u /g;
-          $current_item =~ s/(\W|^)v\./$1$name_for_v /g;
-          $current_item =~ s/(\W|^)w\./$1doblebé /g;
-          $current_item =~ s/(\W|^)x\./$1équis /g;
-          $current_item =~ s/(\W|^)y\./$1igriéga /g;
-          $current_item =~ s/(\W|^)z\./$1séta /g;
-
-          #print STDOUT "NON-VRT_ABBREV-DEBUG-BEF:$current_item:\n\n";    # AD HOC DEBUG
-     }
+     #print STDOUT "NON-VRT_ABBREV-DEBUG-BEF:$current_item:\n\n";    # AD HOC DEBUG
 
      return ($current_item);
 
@@ -10550,17 +10466,15 @@ sub prepare_word_orthographic {
 #     14. Output format conversion: CV / CVG / CVNLRG / manner / place /    #
 #         voicing (all optional)                                             #
 #     15. Pause symbol formatting                                            #
-#     16. Syllable splitting (optional)                                      #
-#     17. Stress mark removal / apostrophe conversion (optional)             #
-#     18. VRT placeholder restoration (optional)                             #
+#     16. Stress mark removal / apostrophe conversion (optional)             #
 #                                                                            #
 # Args:    $word — one word token, orthographic cleanup already applied      #
 # Returns: $word fully transcribed and formatted per current options         #
 # Side effects: none                                                         #
-# Globals read: $vrt_format, $stress_using_tildes, $ye_phoneme_is_fricative, #
+# Globals read: $stress_using_tildes, $ye_phoneme_is_fricative,              #
 #   $ch_is_*, $multichars, $output_CV, $output_CVG, $output_CVNLRG,         #
 #   $output_manner, $output_place, $voicing, $ipa_pause_symbols,            #
-#   $split_at_syllables, $no_stress_marks, $non_ipa_apostrophes,            #
+#   $no_stress_marks, $non_ipa_apostrophes,                                 #
 #   $debug_syllab_sub                                                        #
 #                                                                            #
 ##############################################################################
@@ -10629,33 +10543,7 @@ sub transcribe_word {
      ###############################################################################
      # NOTE: This section need to be *here*, before tildes are removed from vowels.#
      ###############################################################################
-     if ( $vrt_format == 0 ) {
-          $word = stress_accent_routine($word);
-     }
-     else {    # Process VRT Files.
-
-          ############################################################################
-          # Split each line (utterance) into individual words if VRT format is used. #
-          # Multi-word lines are (mainly, if not exclusively) generated by the       #
-          # numbers > words routine, while VRT files must be one word per line.      #
-          ############################################################################
-          my @current_segments = split /\s/, $word;
-
-          foreach my $current_segment (@current_segments) {
-               $current_segment = stress_accent_routine($current_segment);
-               # Strip the artificial tilde from the -mente suffix (added by
-               # replace_multiword_phrases to guide stress placement). The stress
-               # engine has already used it; now remove it so it never appears
-               # in output. The root tilde/mark already encodes secondary stress.
-               $current_segment =~ s/([áéíóú].*)ménte$/$1mente/;
-          }
-
-          $word = join( " ", @current_segments );
-
-          #$temp = Encode::encode_utf8( $word );          # AD-HOC DEBUG
-          #print STDOUT "AFT-SPLIT-VRT-LINES2WD:$temp\n";    # AD-HOC DEBUG
-
-     }
+     $word = stress_accent_routine($word);
 
      ############################################################################
      #                FINAL TOUCHES TO THE BROAD TRANSCRIPTION                  #
@@ -10672,14 +10560,6 @@ sub transcribe_word {
 
      #$temp = Encode::encode_utf8( $word );                    # AD-HOC DEBUG
      #print STDOUT "AFT-PERFORM-SYLLABIFIC:$temp\n";           # AD-HOC DEBUG
-
-     # REMOVE SPURIOUS SYLLABIFICATION DOTS INSERTED AT BEGINNING OF WORDS     #
-     # WHEN A "WORD" IS ACTUALLY A PHRASE (FOR .VRT FORMAT)                    #
-     if ( $vrt_format == 1 ) {
-          $word =~ s/ \./ /g;
-
-          #print STDOUT "AFT-PERFORM-SYLLABIFIC:$temp\n";           # AD-HOC DEBUG
-     }
 
      #print STDOUT "AFT-PERFORM-SYLLABIFIC :$word\n";           # AD-HOC DEBUG
 
@@ -10798,13 +10678,6 @@ sub transcribe_word {
           $word = punct_to_pauses_non_ipa($word);
      }
 
-     ##########################################################################
-     # SPLIT AT SYLLABLES: PUT A NEWLINE AT EACH SYLLABLE BOUNDARY IF DESIRED #
-     ##########################################################################
-     if ( $split_at_syllables == 1 ) {
-          $word = opt_split_at_syllables($word);
-     }
-
      #######################################################################
      # ELIMINATE STRESS MARKS IF DESIRED                                   #
      #######################################################################
@@ -10826,14 +10699,6 @@ sub transcribe_word {
      #print STDOUT "word=$word\n"; # AD-HOC DEBUGGING
      $word =~ s/ $//g;
      $word =~ s/^ //g;
-
-     ############################################################################
-     # REPLACE .VRT PLACEHOLDERS                                                #
-     ############################################################################
-     if ( $vrt_format == 1 ) {
-          $word = replace_vrt_placeholders($word);
-     }
-
 
      # Restore transcription markers.
      if ( $protect_markers && scalar(@markers_found) ) {
@@ -10860,56 +10725,29 @@ sub transcribe_word {
 #   after prelc_pass() and lc() have already been applied.                   #
 #                                                                            #
 #   Pipeline stages (in order):                                              #
-#     1.  VRT column stripping    — extract word column from Connexor .vrt   #
-#     2.  VRT char elimination    — remove chars that clash with internals   #
-#     3.  postlc_line_pass        — dotted era abbreviations (d.C., B.C.E.)  #
-#     4.  normalize_structured_tokens — dates, currency, %, RUT, ordinals,  #
+#     1.  postlc_line_pass        — dotted era abbreviations (d.C., B.C.E.)  #
+#     2.  normalize_structured_tokens — dates, currency, %, RUT, ordinals,  #
 #                                       Roman numerals, math, ranges         #
-#     5.  process_internet_stuff  — URLs, e-mail, domain names               #
-#     6.  fix_misc_punctuation    — dashes, quotes, odd punct                #
-#     7.  expand_abbreviations_ortho — Sr., Prof., etc.                     #
-#     8.  convert_times_to_words  — "14:30" → "catorce treinta"             #
-#     9.  convert_numerals_to_words — integers, decimals, fractions         #
-#    10.  change_some_symbols_to_words — $, &, @, /                        #
-#    11.  replace_multiword_phrases — "data show", "blue jeans"             #
-#    12.  fix_specific_rarities    — edge cases not covered elsewhere        #
-#    13.  fix_odd_characters       — ligatures, unusual Unicode             #
-#    14.  VRT preprocessing        — tag/punct → placeholder tokens          #
+#     3.  process_internet_stuff  — URLs, e-mail, domain names               #
+#     4.  fix_misc_punctuation    — dashes, quotes, odd punct                #
+#     5.  expand_abbreviations_ortho — Sr., Prof., etc.                     #
+#     6.  convert_times_to_words  — "14:30" → "catorce treinta"             #
+#     7.  convert_numerals_to_words — integers, decimals, fractions         #
+#     8.  change_some_symbols_to_words — $, &, @, /                         #
+#     9.  replace_multiword_phrases — "data show", "blue jeans"             #
+#    10.  fix_specific_rarities    — edge cases not covered elsewhere        #
+#    11.  fix_odd_characters       — ligatures, unusual Unicode             #
 #                                                                            #
 # Args:    $line — the lowercased input line (prelc_pass and lc already done)#
 # Returns: $line fully preprocessed, ready to split into word tokens         #
 # Side effects: none                                                         #
-# Globals read: $vrt_format, $times_with_colon, $numerals_to_words,         #
+# Globals read: $times_with_colon, $numerals_to_words,                     #
 #               $num_symbol                                                  #
 #                                                                            #
 ##############################################################################
 sub process_line {
      my $line = shift;
 
-
-     ############################################################################
-     # .VRT COLUMN STRIPPING                                                    #
-     # If reading .vrt text files produced by Connexor, eliminate all text but  #
-     # the second column (word forms)                                           #
-     ############################################################################
-     # TODO: Allow user to specify the column to keep.
-     if ( $vrt_format == 1 ) {
-
-          #print STDOUT "VRT-STRIPPING-BEF:$current_item:\n";    # AD-HOC DEBUG
-
-          $line =~ s/^.+?\t(.+?)\t.+$/$1/g;
-
-          #print STDOUT "VRT-STRIPPING-AFT:$current_item:\n";    # AD-HOC DEBUG
-     }
-
-     ############################################################################
-     # .VRT DISASTEROUS CHARACTER ELIMINATION                                   #
-     # Kill odd characters that are used internally by Perkins, before anything #
-     # else is replaced.                                                        #
-     ############################################################################
-     if ( $vrt_format == 1 ) {
-          $line = kill_disasterous_vrt_chars($line);
-     }
 
      # ── POST-LC ERA ABBREVIATION EXPANSION ──────────────────────────────
      # Dotted/undotted era markers (d.C., a.C., 43 BC, etc.) must be expanded
@@ -10982,17 +10820,6 @@ sub process_line {
      #                   PRE-PROCESSING: Fix odd characters                     #
      ############################################################################
      $line = &fix_odd_characters($line);
-
-     ############################################################################
-     # VRT PRE-PROCESSING                                                       #
-     # If reading .vrt text files, replace <tags>, commas, periods, etc. with   #
-     # special characters (which will be converted into original symbols later) #
-     ############################################################################
-     if ( $vrt_format == 1 ) {
-          $line = &do_vrt_preprocessing($line);
-
-          #print "\nAFT-VRT-PRE-PROCESSING:$line\n";    # AD-HOC DEBUG
-     }
 
      return $line;
 }    # END SUBROUTINE: PROCESS_LINE
@@ -11081,6 +10908,55 @@ sub buffer_word {
 # Globals read: $mfa_format, $phonword_format                                #
 #                                                                            #
 ##############################################################################
+############################################################################
+# SUBROUTINE: RESTORE_ORTHO_CASE                                           #
+# For -phonword. The pipeline lowercases each line, so the orthographic    #
+# words in @output_ortho are lower case. Each is matched, in order, against #
+# the words of the original line (punctuation at either end removed); a    #
+# match gives it back its original spelling. A word the pipeline made up   #
+# (a numeral spelled out, an expanded abbreviation) matches nothing and    #
+# stays as it is. The search looks at most four words ahead, so that a     #
+# made-up word cannot match a word much further along the line.            #
+# Args: ref to @output_ortho (changed in place), the original input line   #
+############################################################################
+sub restore_ortho_case {
+     my ( $ortho, $line ) = @_;
+     return unless defined $line;
+     my @orig = grep { length } map { ( my $w = $_ ) =~ s/^[^\p{L}]+|[^\p{L}]+$//g; $w } split /\s+/, $line;
+     my @match = (undef) x scalar(@$ortho);    # index into @orig, per ortho word
+     my $k = 0;
+     foreach my $i ( 0 .. $#$ortho ) {
+          my $o = $ortho->[$i];
+          next unless defined $o && $o =~ /\p{L}/ && $k <= $#orig;
+          my $want = Unicode::Normalize::NFC($o);
+          foreach my $j ( $k .. ( $k + 3 < $#orig ? $k + 3 : $#orig ) ) {
+               if ( Unicode::Normalize::NFC( lc( $orig[$j] ) ) eq $want ) {
+                    $match[$i] = $j;
+                    $k = $j + 1;
+                    last;
+               }
+          }
+     }
+     # A word the pipeline respelled (a built-in pronunciation: O'Higgins is
+     # transcribed from "ojíguins") matches nothing either. Between two
+     # matched words, a run of unmatched words as long as the run of unused
+     # words of the original line is taken to be those words, one for one.
+     my ( $pi, $pj ) = ( -1, -1 );
+     foreach my $i ( 0 .. scalar(@$ortho) ) {
+          next if $i < scalar(@$ortho) && !defined $match[$i];
+          my $nj = $i < scalar(@$ortho) ? $match[$i] : scalar(@orig);
+          my @oi = grep { defined $ortho->[$_] && $ortho->[$_] =~ /\p{L}/ } ( $pi + 1 .. $i - 1 );
+          my @oj = ( $pj + 1 .. $nj - 1 );
+          if ( @oi && @oi == @oj ) {
+               $match[ $oi[$_] ] = $oj[$_] for 0 .. $#oi;
+          }
+          ( $pi, $pj ) = ( $i, $nj );
+     }
+     foreach my $i ( 0 .. $#$ortho ) {
+          $ortho->[$i] = $orig[ $match[$i] ] if defined $match[$i];
+     }
+}
+
 sub format_output_word {
      # Args: $final_word, $ortho
      # Optional flags can be passed as a hashref third arg for testing:
@@ -12219,6 +12095,12 @@ sub normalize_structured_tokens {
      # separately, with no changes needed to either of them.
      # The "+" quantifier already naturally covers "..." (three
      # consecutive periods) as a single match, same as before.
+     # A period that ends an abbreviation (Sr., Sra., art., Bs. As., no. 5)
+     # does not end a sentence. It used to be taken for one here, before
+     # expand_abbreviations_ortho() could see it, so that "Sr. Pérez"
+     # came out as "esr ‖ ˈpe.ɾes". See protect_abbreviation_periods().
+     $current_item = protect_abbreviation_periods($current_item);
+
      # -noclp and -noscp (or add_colon_pauses = 0 and add_semicolon_pauses = 0
      # in perkins.ini) delete a colon or semicolon after a word instead. Only
      # the user's own setting counts here: -mfa, -phonword and vertical output
@@ -12230,6 +12112,17 @@ sub normalize_structured_tokens {
      unless ( $_VAL_AFTER_CLI{add_semicolon_pauses} // 1 ) {
           $current_item =~ s/(\p{L})\s*;+(?=\s|$)/$1/g;
      }
+     # -nopel and -nosnp work the same way (they once did nothing):
+     # -nopel (add_ellipsis_pauses = 0) deletes an ellipsis after a word,
+     # -nosnp (add_sentence_breaks = 0) a full stop, question mark or
+     # exclamation mark after a word. A run of these marks that holds two
+     # periods or more ("...", "?...") is an ellipsis, not a sentence end.
+     unless ( $_VAL_AFTER_CLI{add_ellipsis_pauses} // 1 ) {
+          $current_item =~ s/(\p{L})\s*(?=[.!?]*\.\.)[.!?]+(?=\s|$)/$1/g;
+     }
+     unless ( $_VAL_AFTER_CLI{add_sentence_breaks} // 1 ) {
+          $current_item =~ s/(\p{L})\s*(?![.!?]*\.\.)[.!?]+(?=\s|$)/$1/g;
+     }
      if ( $ipa_pause_symbols == 1 ) {
           $current_item =~ s/(\p{L}+)\s*[.!?:;]+(?=\s|$)/$1 [UtteranceBoundary] /g;
           $current_item =~ s/(\p{L})[.!?:;]+(?=\s|$)/$1 [UtteranceBoundary] /g;
@@ -12239,7 +12132,7 @@ sub normalize_structured_tokens {
           # builtin_bypass() resolves: a full stop, question or exclamation
           # mark is the sentence break ##, an ellipsis, colon or semicolon
           # the long pause (...).
-          $current_item =~ s/(\p{L}+)\s*(\.{2,})(?=\s|$)/$1 qqlongpauseqq /g;
+          $current_item =~ s/(\p{L}+)\s*(?=[.!?]*\.\.)[.!?]+(?=\s|$)/$1 qqlongpauseqq /g;
           $current_item =~ s/(\p{L}+)\s*[.!?]*[.!?][.!?:;]*(?=\s|$)/$1 qqsentencebreakqq /g;
           $current_item =~ s/(\p{L}+)\s*[:;]+(?=\s|$)/$1 qqlongpauseqq /g;
      }
@@ -12257,8 +12150,9 @@ sub normalize_structured_tokens {
      # intercepts the raw — character while it's still there.
      {
           my $b = ( $ipa_pause_symbols == 1 ) ? '[UtteranceBoundary]' : 'qqlongpauseqq';
+          my $e = ( $_VAL_AFTER_CLI{add_ellipsis_pauses} // 1 ) ? $b : '';
           $current_item =~ s/\s*—\s*/ $b /g;
-          $current_item =~ s/\s*…\s*/ $b /g;
+          $current_item =~ s/\s*…\s*/ $e /g;
      }
 
      # A comma after a word is the short pause |, as with --tokens. It
@@ -12487,250 +12381,122 @@ sub convert_numerals_to_words {
 
      ############################################################################
      #                                                                          #
-     #                    CONVERT ANY FORMAT **EXCEPT** VRT                     #
-     #                                                                          #
-     ############################################################################
-     if ( $vrt_format == 0 ) {
-
-          #print STDOUT "NON-VRT-NUM_CONV-BEF-CnvNm:$current_item\n";    # AD-HOC DEBUG
-
-          # NOTE: The minus-sign-to-"menos" conversion for negative numbers now
-          # happens earlier, in fix_misc_punctuation(), before dashes are
-          # turned into comma pauses. Doing it here (matching ", [0-9]") used
-          # to misfire on genuine commas before a number (e.g. "Allá, 400
-          # personas" was wrongly turned into "Allá, menos 400 personas").
-
-          ####################################################################
-          # CURRENCY AMOUNTS: all $ forms are now handled by
-          # normalize_structured_tokens (which runs earlier in the pipeline)
-          # producing correct output: "mil doscientos pesos con cincuenta
-          # centavos", "cien dólares estadounidenses", etc.
-          # The old handler here produced "kóma" instead of "con", wrong
-          # currency names ("uscien pesos" for US$N), and "pesoscero"
-          # concatenation bugs. It has been removed.
-          #print STDOUT "NON-VRT-NUM_CONV-AFT-CURR:$current_item\n";    # AD-HOC DEBUG
-
-          # PROCESS 4-DIGIT INTEGERS WITHOUT PERIOD SEPARATOR, WHICH ARE NOT
-          # CAUGHT BY THE REGEX PATTERN USED HERE.
-          # NOTE: "\$" was added to the allowed prefix characters so that a
-          # currency symbol directly touching a number (e.g. "$1500") doesn't
-          # block the match. $1 (the prefix) is now prepended verbatim, rather
-          # than being discarded and replaced with a hardcoded space, so the
-          # "$" survives to be converted into the word stored in $moneda
-          # afterward.
-          $current_item =~ s/( |\(|\{|\[|\/|^)(\d{4})(\D|$)/eval q{
-               $1 .                                     # Prepend the original prefix char (space, bracket, $, etc.)
-               $numeral_converter_obj->cardinal($2)     # Convert numeral to words
-               . " ";                                   # Postpend a space
-          } /ge;
-
-          #print STDOUT "NON-VRT-NUM_CONV-AFT-4DIGT:$current_item\n";    # AD-HOC DEBUG
-
-          # PROCESS ALL OTHER INTEGER NUMBERS
-          # Don't use "\b" in the first search expr - it catches too much ("2" in "3,2")
-          # NOTE: "\$" added to the prefix class, and $1 is now preserved (see above).
-          $current_item =~ s/( |\(|\{|\[|\/|^)(\d{1,3})((\.\d{3})*)(\D|$)/eval q{
-
-               # print STDOUT "1=$1\t2=$2\t3=$3\t4=$4\t5=$5\t6=$6\ttemp_num=$temp_num\n"; # AD-HOC DEBUG
-
-               $temp_num = join ('', $2, $3);               # Concatenate the parts of the extracted integer
-
-               if ( $5 eq "," ) {                                # If $5 is a comma, do this...
-                    $1 .                                         # Prepend the original prefix char
-                    $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
-                    . ">"                                        # Add special > char to indicate $5 came after number
-                    . $5                                         # Add the non-number trailing char
-                    #. " ";                                      # Postpend a space
-               }
-               else {                                            # If $5 isn't a comma, do this...
-                    $1 .                                         # Prepend the original prefix char
-                    $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
-                    . ($5 =~ m{\w} ? " $5" : $5)               # Space before word char to prevent concat
-               }
-          } /ge;
-
-          #print STDOUT "NON-VRT-NUM_CONV-AFT-AOINT:$current_item\n";    # AD-HOC DEBUG
-
-          # Process fractions (numbers to right of decimal point)               #
-          $current_item =~ s/(,)(\d+)/eval q{
-
-               # print STDOUT "1=$1\t2=$2\n"; # AD-HOC DEBUG
-
-               " kóma " .                                        # Convert ">," to " kóma "
-               &convert_fractional_nums_to_words($2)             # Send fractional num to conversion subroutine
-          }/ge;
-
-          #print STDOUT "NON-VRT-NUM_CONV-AFT-FRACT:$current_item\n";    # AD-HOC DEBUG
-
-          # Process numbers with leading 0s (01, 001, 0001, 00001) and after commas #
-          $current_item =~ s/( |\(|\{|\[|\/|\$|^)([\d]+)(\D|$)/eval q{
-               $1 .                                     # Prepend a space if there already was one
-               &convert_fractional_nums_to_words($2)    # Send number to conversion subroutine
-               . $3;                                    # Postpend a space
-          } /ge;
-
-          #print STDOUT "NON-VRT-NUM_CONV-AFT-LDNG0:$current_item\n";    # AD-HOC DEBUG
-
-          ############################################################################
-          # CONVERT PERIODS AND COMMAS IN NUMERALS BUT NOT ELSEWHERE                 #
-          # NOTE: A space is prepended to "punto"/"coma" because the preceding       #
-          # integer was converted to a word (e.g. "cincuenta") with no trailing      #
-          # space; without it we get "cincuentapunto" instead of "cincuenta punto".  #
-          ############################################################################
-          $current_item =~ s/\.([0-9])/ punto $1/g;
-          $current_item =~ s/,([0-9])/ coma $1/g;
-
-          ############################################################################
-          # ELIMINATE COLONS BETWEEN NUMERALS BUT NOT ELSEWHERE (E.G. "15:30")       #
-          ############################################################################
-          $current_item =~ s/([0-9]):([0-9])/$1 $2/g;
-
-          #######################################################################
-          # Convert certain number-related symbols                              #
-          #######################################################################
-          # NOTE: "%" is handled earlier by normalize_structured_tokens which
-          # produces "por ciento". Any residual "%" that slipped through (e.g.
-          # not attached to a number) still gets expanded here, correctly.
-          $current_item =~ s/(\d)\s*%/ $1 por ciento /g;
-          $current_item =~ s/%/ por ciento /g;
-          $current_item =~ s/\+/ más /g;
-
-          ############################################################################
-          # CHANGE SPECIFIC COMBINATIONS OF LETTERS AND NUMBERS TO WORD FORM         #
-          # (e.g. "abc1", "mc2")                                                     #
-          ############################################################################
-          $current_item =~ s/(\W|^)abc1/$1abeseúno /g;
-          $current_item =~ s/(\W|^)mc2/$1emesedós /g;
-
-          #print STDOUT "\n>LET+NUM AFT: $current_item";    # DEBUG
-     }
-
-     ############################################################################
-     #                                                                          #
-     #                             CONVERT .VRT FORMAT                          #
+     #                    CONVERT NUMERALS                                      #
      #                                                                          #
      ############################################################################
 
-     # If generating .VRT files, put ¬ after numerals converted into            #
-     # words instead of a space, so "2000" doesn't end up occupying 4 lines     #
-     # (dos\nsero\nsero\nsero)                                                  #
+     #print STDOUT "NON-VRT-NUM_CONV-BEF-CnvNm:$current_item\n";    # AD-HOC DEBUG
 
-     if ( $vrt_format == 1 ) {
+     # NOTE: The minus-sign-to-"menos" conversion for negative numbers now
+     # happens earlier, in fix_misc_punctuation(), before dashes are
+     # turned into comma pauses. Doing it here (matching ", [0-9]") used
+     # to misfire on genuine commas before a number (e.g. "Allá, 400
+     # personas" was wrongly turned into "Allá, menos 400 personas").
 
-          #print STDOUT "\nVRT-NUM_CONV-----START:$current_item:\n";    # AD-HOC DEBUG
+     ####################################################################
+     # CURRENCY AMOUNTS: all $ forms are now handled by
+     # normalize_structured_tokens (which runs earlier in the pipeline)
+     # producing correct output: "mil doscientos pesos con cincuenta
+     # centavos", "cien dólares estadounidenses", etc.
+     # The old handler here produced "kóma" instead of "con", wrong
+     # currency names ("uscien pesos" for US$N), and "pesoscero"
+     # concatenation bugs. It has been removed.
+     #print STDOUT "NON-VRT-NUM_CONV-AFT-CURR:$current_item\n";    # AD-HOC DEBUG
 
-          # Convert multiple spaces to just one space.                          #
-          $current_item =~ s/ +/ /g;
+     # PROCESS 4-DIGIT INTEGERS WITHOUT PERIOD SEPARATOR, WHICH ARE NOT
+     # CAUGHT BY THE REGEX PATTERN USED HERE.
+     # NOTE: "\$" was added to the allowed prefix characters so that a
+     # currency symbol directly touching a number (e.g. "$1500") doesn't
+     # block the match. $1 (the prefix) is now prepended verbatim, rather
+     # than being discarded and replaced with a hardcoded space, so the
+     # "$" survives to be converted into the word stored in $moneda
+     # afterward.
+     $current_item =~ s/( |\(|\{|\[|\/|^)(\d{4})(\D|$)/eval q{
+          $1 .                                     # Prepend the original prefix char (space, bracket, $, etc.)
+          $numeral_converter_obj->cardinal($2)     # Convert numeral to words
+          . " ";                                   # Postpend a space
+     } /ge;
 
-          # NEW IN 417 #
+     #print STDOUT "NON-VRT-NUM_CONV-AFT-4DIGT:$current_item\n";    # AD-HOC DEBUG
 
-          # If a number starts with a minus sign (negative number), change that #
-          # sign to "menos".                                                    #
-          if ( $current_item =~ m/^, [0-9]/ ) {
-               $current_item =~ s/^,/menos /g;
+     # PROCESS ALL OTHER INTEGER NUMBERS
+     # Don't use "\b" in the first search expr - it catches too much ("2" in "3,2")
+     # NOTE: "\$" added to the prefix class, and $1 is now preserved (see above).
+     $current_item =~ s/( |\(|\{|\[|\/|^)(\d{1,3})((\.\d{3})*)(\D|$)/eval q{
+
+          # print STDOUT "1=$1\t2=$2\t3=$3\t4=$4\t5=$5\t6=$6\ttemp_num=$temp_num\n"; # AD-HOC DEBUG
+
+          $temp_num = join ('', $2, $3);               # Concatenate the parts of the extracted integer
+
+          if ( $5 eq "," ) {                                # If $5 is a comma, do this...
+               $1 .                                         # Prepend the original prefix char
+               $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
+               . ">"                                        # Add special > char to indicate $5 came after number
+               . $5                                         # Add the non-number trailing char
+               #. " ";                                      # Postpend a space
           }
+          else {                                            # If $5 isn't a comma, do this...
+               $1 .                                         # Prepend the original prefix char
+               $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
+               . ($5 =~ m{\w} ? " $5" : $5)               # Space before word char to prevent concat
+          }
+     } /ge;
 
-          # Convert "," at beginning of line to the word "coma" followed by space. #
-          # This catches (rare) things like ",333".                                #
-          $current_item =~ s/^\,/coma /g;
+     #print STDOUT "NON-VRT-NUM_CONV-AFT-AOINT:$current_item\n";    # AD-HOC DEBUG
 
-          ####################################################################
-          # CURRENCY AMOUNTS: handled by normalize_structured_tokens (removed here).
-          #print STDOUT "VRT-NUM_CONV-AFT-CURR:$current_item:\n";    # AD-HOC DEBUG
+     # Process fractions (numbers to right of decimal point)               #
+     $current_item =~ s/(,)(\d+)/eval q{
 
-          # Process 4-digit integers without period separator, which are not    #
-          # caught by the regex pattern used here.                              #
-          # NOTE: "\$" added to prefix class; $1 now preserved (see non-VRT     #
-          # branch above for rationale).                                        #
-          $current_item =~ s/( |\(|\{|\[|\/|^)(\d{4})(\D|$)/eval q{
-               $1 .                                     # Prepend the original prefix char
-               $numeral_converter_obj->cardinal($2)     # Convert numeral to words
-               . " ";                                   # Postpend a space
-          } /ge;
+          # print STDOUT "1=$1\t2=$2\n"; # AD-HOC DEBUG
 
-          #print STDOUT "VRT-NUM_CONV-AFT-4DIGT:$current_item:\n";    # AD-HOC DEBUG
+          " kóma " .                                        # Convert ">," to " kóma "
+          &convert_fractional_nums_to_words($2)             # Send fractional num to conversion subroutine
+     }/ge;
 
-          # Process all other integer numbers                                            #
-          # Don't use "\b" in the first search expr - it catches too much ("2" in "3,2") #
-          $current_item =~ s/( |\(|\{|\[|\/|\$|^)(\d{1,3})((\.\d{3})*)(\D|$)/eval q{
+     #print STDOUT "NON-VRT-NUM_CONV-AFT-FRACT:$current_item\n";    # AD-HOC DEBUG
 
-               #print STDOUT "1=$1\t2=$2\t3=$3\t4=$4\t5=$5\t6=$6\ttemp_num=$temp_num\n"; # AD-HOC DEBUG
+     # Process numbers with leading 0s (01, 001, 0001, 00001) and after commas #
+     $current_item =~ s/( |\(|\{|\[|\/|\$|^)([\d]+)(\D|$)/eval q{
+          $1 .                                     # Prepend a space if there already was one
+          &convert_fractional_nums_to_words($2)    # Send number to conversion subroutine
+          . $3;                                    # Postpend a space
+     } /ge;
 
-               $temp_num = join ('', $2, $3);               # Concatenate the parts of the extracted integer
+     #print STDOUT "NON-VRT-NUM_CONV-AFT-LDNG0:$current_item\n";    # AD-HOC DEBUG
 
-               if ( $5 eq "," ) {                                # If $5 is a comma, do this...
-                    $1 .                                         # Prepend the original prefix char
-                    $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
-                    . ">"                                        # Add special > char to indicate $5 came after number
-                    . $5                                         # Add the non-number trailing char
-                    #. " ";                                      # Postpend a space
-               }
-               else {                                            # If $5 isn't a comma, do this...
-                    $1 .                                         # Prepend the original prefix char
-                    $numeral_converter_obj->cardinal($temp_num)  # Convert numeral to words
-                    . $5                                         # Add the non-number trailing char
-                    #. " ";                                      # Postpend a space
-               }
-          } /ge;
+     ############################################################################
+     # CONVERT PERIODS AND COMMAS IN NUMERALS BUT NOT ELSEWHERE                 #
+     # NOTE: A space is prepended to "punto"/"coma" because the preceding       #
+     # integer was converted to a word (e.g. "cincuenta") with no trailing      #
+     # space; without it we get "cincuentapunto" instead of "cincuenta punto".  #
+     ############################################################################
+     $current_item =~ s/\.([0-9])/ punto $1/g;
+     $current_item =~ s/,([0-9])/ coma $1/g;
 
-          #print STDOUT "VRT-NUM_CONV-AFT-AOINT:$current_item:\n";    # AD-HOC DEBUG
+     ############################################################################
+     # ELIMINATE COLONS BETWEEN NUMERALS BUT NOT ELSEWHERE (E.G. "15:30")       #
+     ############################################################################
+     $current_item =~ s/([0-9]):([0-9])/$1 $2/g;
 
-          # Process fractions (numbers to right of decimal point)               #
-          # 392: TESTING: Changed "(\d+)?" to "(\d)", as I think it was changing all commas.
-          $current_item =~ s/(>?,)(\d+)/eval q{
+     #######################################################################
+     # Convert certain number-related symbols                              #
+     #######################################################################
+     # NOTE: "%" is handled earlier by normalize_structured_tokens which
+     # produces "por ciento". Any residual "%" that slipped through (e.g.
+     # not attached to a number) still gets expanded here, correctly.
+     $current_item =~ s/(\d)\s*%/ $1 por ciento /g;
+     $current_item =~ s/%/ por ciento /g;
+     $current_item =~ s/\+/ más /g;
 
-               #print STDOUT "1=$1\t2=$2\n"; # AD-HOC DEBUG
+     ############################################################################
+     # CHANGE SPECIFIC COMBINATIONS OF LETTERS AND NUMBERS TO WORD FORM         #
+     # (e.g. "abc1", "mc2")                                                     #
+     ############################################################################
+     $current_item =~ s/(\W|^)abc1/$1abeseúno /g;
+     $current_item =~ s/(\W|^)mc2/$1emesedós /g;
 
-               " kóma " .                                        # Convert ">," to " kóma "
-               &convert_fractional_nums_to_words($2)             # Send fractional num to conversion subroutine
-          }/ge;
+     #print STDOUT "\n>LET+NUM AFT: $current_item";    # DEBUG
 
-          #print STDOUT "VRT-NUM_CONV-AFT-FRACT:$current_item:\n";    # AD-HOC DEBUG
-
-          # Process numbers with leading 0s (01, 001, 0001, 00001) and after commas #
-          $current_item =~ s/( |\(|\{|\[|\/|\$|^)([\d]+)(\D|$)/eval q{
-               $1 .                                     # Prepend a space if there already was one
-               &convert_fractional_nums_to_words($2)    # Send number to conversion subroutine
-               . $3;                                    # Postpend a space
-          } /ge;
-
-          #print STDOUT "VRT-NUM_CONV-AFT-LDNG0:$current_item:\n";    # AD-HOC DEBUG
-
-          ############################################################################
-          # CONVERT PERIODS AND COMMAS BEFORE NUMERALS BUT NOT ELSEWHERE             #
-          # NEW IN 401: Also catch orphaned ">," groups.                             #
-          # NOTE: Space prepended to "punto" to prevent "cincuentapunto" fusion      #
-          # (the integer was converted to a word with no trailing space).            #
-          ############################################################################
-          $current_item =~ s/\.([0-9])/ punto $1/g;
-          $current_item =~ s/>, / guión /g;
-
-          #print STDOUT "VRT-NUM_CONV-AFT-CNV.,:$current_item:\n";    # AD-HOC DEBUG
-
-          #############################################################################
-          ## ELIMINATE COLONS BETWEEN NUMERALS BUT NOT ELSEWHERE (E.G. "15:30")       #
-          #############################################################################
-          #if ( $vrt_format == 0 ) {
-          #     $current_item =~ s/([0-9]):([0-9])/$1 $2/g;
-          #}
-
-          #######################################################################
-          # Convert certain number-related symbols                              #
-          #######################################################################
-          # TODO Move up to non-VRT section
-          $current_item =~ s/(\d)\s*%/ $1 por ciento /g;
-          $current_item =~ s/%/ por ciento /g;
-          $current_item =~ s/\+/ más /g;
-
-          #print STDOUT "NON-VRT-NUM_CONV-AFT-NMSYM:$current_item\n";    # AD-HOC DEBUG
-
-          #print "\n>LET+NUM AFT: $current_item";    # DEBUG
-
-          # Convert conjunction "y" to "i" (it's inserted by the number conversion routine, #
-          # but is analyzed as the phoneme "ye" by Perkins without this fix)                #
-          $current_item =~ s/ y / i /g;
-
-     }
      return ($current_item);
 
 }    # END SUBROUTINE: CONVERT NUMERALS TO WORDS
@@ -12779,28 +12545,14 @@ sub change_some_symbols_to_words {
 
      my $current_item = $_[0];
 
-     if ( $vrt_format == 1 ) {
-          $current_item =~ s/@/¬arroba¬/g;
-          $current_item =~ s/\$/$moneda¬/g;         # Replace "$" character with word stored in $moneda
-          $current_item =~ s/&/¬y¬/g;
-          $current_item =~ s/_/¬/g;              # a word separator, not read aloud
-          $current_item =~ s/\//ø$slash\ø/g;
-     }
-     else {
-          $current_item =~ s/@/ arroba /g;
-          $current_item =~ s/\$/$moneda /g;          # Replace "$" character with word stored in $moneda
-          $current_item =~ s/&/ y /g;
-          $current_item =~ s/_/ /g;              # a word separator (FreeLing multiwords), not read aloud
-          $current_item =~ s/\// $slash /g;
-     }
+     $current_item =~ s/@/ arroba /g;
+     $current_item =~ s/\$/$moneda /g;          # Replace "$" character with word stored in $moneda
+     $current_item =~ s/&/ y /g;
+     $current_item =~ s/_/ /g;              # a word separator (FreeLing multiwords), not read aloud
+     $current_item =~ s/\// $slash /g;
 
      # Change remaining dashes to spaces
-     if ( $vrt_format == 1 ) {
-          $current_item =~ s/\-/¬/g;
-     }
-     else {
-          $current_item =~ s/\-/ /g;
-     }
+     $current_item =~ s/\-/ /g;
 
      return ($current_item);
 
@@ -12818,13 +12570,7 @@ sub replace_multiword_phrases {
      # Adverbs ending in "-mente"
 
      # EPIPHANY : VITAL ADDITION: REGEX WAS SELECTING FROM BEG OF LINE TO LAST -MENTE! #
-     # NOTE Changed in 383 to process .vrt format                                      #
-     if ( $vrt_format == 1 ) {
-          $current_item =~ s/(\w+)mente/$1ménte/g;    # Space and underscore added to allow temporary processing and later rejoining
-     }
-     else {
-          $current_item =~ s/(\w+)mente/$1 _ménte/g;    # Space and underscore added to allow temporary processing and later rejoining
-     }
+     $current_item =~ s/(\w+)mente/$1 _ménte/g;    # Space and underscore added to allow temporary processing and later rejoining
 
                     # FOR DEBUGGING
                     #print STDOUT "\n$current_item"; # FOR DEBUGGING
@@ -12995,47 +12741,6 @@ sub fix_odd_characters {
      return ($current_item);
 }
 
-############################################################################
-# VRT PRE-PROCESSING                                                       #
-# If reading .vrt text files, replace <tags>, commas, periods, etc. with   #
-# special characters (which will be converted back into the original       #
-# symbols later)                                                           #
-############################################################################
-sub do_vrt_preprocessing {
-
-     my $current_item = $_[0];
-
-     # $temp = Encode::encode_utf8($current_item);       # AD-HOC DEBUG
-     # print STDOUT "VRT-PREPROCESSING-BEF:$temp:\n";    # AD-HOC DEBUG
-
-     # STRIP PUNCTUATION FROM NUMBERS
-     $current_item =~ s/([0-9])(-)+/$1/g;
-
-     # PROCESS CERTAIN CHARACTERS AND SYMBOLS, ESPECIALLY FOR CONNEXOR SOFTWARE
-     # A space immediately touching a bracketed sentinel token
-     # ([MalformedNumber], [UtteranceBoundary], etc.) must NOT be converted
-     # here -- confirmed as a real, pre-existing bug (not specific to any
-     # one sentinel): converting it means @word_array = split(/ /, ...)
-     # later has no space left to split on around that token, so the
-     # ENTIRE LINE becomes one single "word" instead of separate tokens,
-     # and the sentinel never reaches the ERROR SENTINEL BYPASS at all --
-     # it gets phonemicized as if it were ordinary text instead. Traced
-     # directly: this affected the already-existing [InvalidDate] sentinel
-     # in VRT mode, not just the new one added for utterance boundaries.
-     # Excluding only the spaces directly touching a bracket leaves the
-     # original Connexor multi-word-unit behavior ("estados unidos")
-     # completely unaffected, since those never have brackets nearby.
-     $current_item =~ s/(?<!\])\ (?!\[)/¬/g;
-     $current_item =~ s/-/ø/g;                     # Dashes. Connexor keeps them in things like "fonético-fonológico".
-     $current_item =~ s/<p>/µµ/g;                  # Connexor paragraph symbols.
-     $current_item =~ s/<s>/µ/g;                   # Connexor sentence symbols.
-     $current_item =~ s/\./øøø/g;
-     $current_item =~ s/\+/øøø/g;
-
-     # $temp = Encode::encode_utf8($current_item);    # AD-HOC DEBUG
-                                                      #print STDOUT "VRT-PREPROCESSING-AFT:$temp:\n";    # AD-HOC DEBUG
-     return ($current_item);
-}
 
 ##############################################################################
 #                                                                            #
@@ -13575,57 +13280,27 @@ sub spell_out_single_letters {
 
      my $current_item = $_[0];
 
-     if ( $vrt_format == 1 ) {
-
-          #print STDOUT "SPELL-OUT-VRT-BEF:$current_item\n"; # AD-HOC DEBUG
-
-          $current_item =~ s/(^| |ø)b( |ø|$)/$1belárga$2/g;
-          $current_item =~ s/(^| |ø)c( |ø|$)/$1se$2/g;
-          $current_item =~ s/(^| |ø)d( |ø|$)/$1de$2/g;
-          $current_item =~ s/(^| |ø)f( |ø|$)/$1éfe$2/g;
-          $current_item =~ s/(^| |ø)g( |ø|$)/$1je$2/g;
-          $current_item =~ s/(^| |ø)h( |ø|$)/$1áche$2/g;
-          $current_item =~ s/(^| |ø)j( |ø|$)/$1jóta$2/g;
-          $current_item =~ s/(^| |ø)k( |ø|$)/$1ca$2/g;
-          $current_item =~ s/(^| |ø)l( |ø|$)/$1éle$2/g;
-          $current_item =~ s/(^| |ø)m( |ø|$)/$1éme$2/g;
-          $current_item =~ s/(^| |ø)n( |ø|$)/$1éne$2/g;
-          $current_item =~ s/(^| |ø)p( |ø|$)/$1pe$2/g;
-          $current_item =~ s/(^| |ø)q( |ø|$)/$1cu$2/g;
-          $current_item =~ s/(^| |ø)r( |ø|$)/$1ére$2/g;
-          $current_item =~ s/(^| |ø)s( |ø|$)/$1ése$2/g;
-          $current_item =~ s/(^| |ø)t( |ø|$)/$1te$2/g;
-          $current_item =~ s/(^| |ø)v( |ø|$)/$1$name_for_v$2/g;
-          $current_item =~ s/(^| |ø)w( |ø|$)/$1doblebé$2/g;
-          $current_item =~ s/(^| |ø)x( |ø|$)/$1équis$2/g;
-          $current_item =~ s/(^| |ø)z( |ø|$)/$1séta$2/g;
-          $current_item =~ s/(^| |ø)ñ( |ø|$)/$1éñe$2/g;
-
-          #print STDOUT "SPELL-OUT-VRT-AFT:$current_item\n\n"; # AD-HOC DEBUG
-     }
-     else {
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)b($|\.|,|:|;|"|-|‖|\]|\)|\})/$1belárga$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)c($|\.|,|:|;|"|-|‖|\]|\)|\})/$1se$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)d($|\.|,|:|;|"|-|‖|\]|\)|\})/$1de$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)f($|\.|,|:|;|"|-|‖|\]|\)|\})/$1efe$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)g($|\.|,|:|;|"|-|‖|\]|\)|\})/$1je$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)h($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ache$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)j($|\.|,|:|;|"|-|‖|\]|\)|\})/$1jota$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)k($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ca$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)l($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ele$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)m($|\.|,|:|;|"|-|‖|\]|\)|\})/$1eme$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)n($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ene$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)p($|\.|,|:|;|"|-|‖|\]|\)|\})/$1pe$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)q($|\.|,|:|;|"|-|‖|\]|\)|\})/$1cu$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)r($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ere$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)s($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ese$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)t($|\.|,|:|;|"|-|‖|\]|\)|\})/$1te$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)v($|\.|,|:|;|"|-|‖|\]|\)|\})/$1$name_for_v$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)w($|\.|,|:|;|"|-|‖|\]|\)|\})/$1doblebé$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)x($|\.|,|:|;|"|-|‖|\]|\)|\})/$1equis$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)z($|\.|,|:|;|"|-|‖|\]|\)|\})/$1seta$2/g;
-          $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)ñ($|\.|,|:|;|"|-|‖|\]|\)|\})/$1eñe$2/g;
-     }
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)b($|\.|,|:|;|"|-|‖|\]|\)|\})/$1belárga$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)c($|\.|,|:|;|"|-|‖|\]|\)|\})/$1se$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)d($|\.|,|:|;|"|-|‖|\]|\)|\})/$1de$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)f($|\.|,|:|;|"|-|‖|\]|\)|\})/$1efe$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)g($|\.|,|:|;|"|-|‖|\]|\)|\})/$1je$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)h($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ache$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)j($|\.|,|:|;|"|-|‖|\]|\)|\})/$1jota$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)k($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ca$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)l($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ele$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)m($|\.|,|:|;|"|-|‖|\]|\)|\})/$1eme$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)n($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ene$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)p($|\.|,|:|;|"|-|‖|\]|\)|\})/$1pe$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)q($|\.|,|:|;|"|-|‖|\]|\)|\})/$1cu$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)r($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ere$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)s($|\.|,|:|;|"|-|‖|\]|\)|\})/$1ese$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)t($|\.|,|:|;|"|-|‖|\]|\)|\})/$1te$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)v($|\.|,|:|;|"|-|‖|\]|\)|\})/$1$name_for_v$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)w($|\.|,|:|;|"|-|‖|\]|\)|\})/$1doblebé$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)x($|\.|,|:|;|"|-|‖|\]|\)|\})/$1equis$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)z($|\.|,|:|;|"|-|‖|\]|\)|\})/$1seta$2/g;
+     $current_item =~ s/(^|\.|,|:|;|"|-|‖|\[|\(|\{)ñ($|\.|,|:|;|"|-|‖|\]|\)|\})/$1eñe$2/g;
 
      return ($current_item);
 }
@@ -13891,21 +13566,8 @@ sub convert_punctuation_to_pauses {
      ############################################################################
      #  Strip ALL white space, punctuation and other non-alphabetic chars from  #
      #  word.                                                                   #
-     #                        (FOR NON-VRT FORMATS)                             #
      ############################################################################
-     if ( $vrt_format == 0 ) {
-          $current_item =~ s{\W}{}g;
-     }
-     ############################################################################
-     # Strip white space, punctuation and other non-alphabetic chars from       #
-     # BEGINNING and END of each word (which can actually be 1+ words in VRT    #
-     # format).                                                                 #
-     #                           (FOR VRT FORMAT)                               #
-     ############################################################################
-     if ( $vrt_format == 1 ) {
-          $current_item =~ s{^\W}{}g;
-          $current_item =~ s{\W$}{}g;
-     }
+     $current_item =~ s{\W}{}g;
 
      return ($current_item);
 }
@@ -15642,7 +15304,9 @@ sub opt_convert_phonemes_places {
      $current_item =~ s/$palatals/P/g;
      $current_item =~ s/$velars/V/g;
      $current_item =~ s/$labiovelars/W/g;
-     $current_item =~ s/$all_vowels/V/g;
+     # A vowel has no place of articulation in this scheme. It was once V,
+     # the same letter as a velar consonant.
+     $current_item =~ s/$all_vowels/-/g;
      $current_item =~ s/̪̠͡//g;
 
      return ($current_item);
@@ -15808,66 +15472,34 @@ sub punct_to_pauses_non_ipa {
 }
 
 ############################################################################
-# SUBROUTINE: SPLIT AT SYLLABLES: PUT A NEWLINE AT EACH SYLLABLE BOUNDARY  #
-#             IF DESIRED                                                   #
+# SUBROUTINE: WRITE_LIST_OUTPUT                                            #
+# Turns the finished transcription into a list with one word (-owl, -vrt) #
+# or one syllable (-sas, -osl) per line, in text order. Every pause symbol #
+# (| ‖ || (.) (..) (...) # ## ###) is removed first. Words are cut at     #
+# white space; syllables at white space and at syllable dots.              #
+# Args:    the output file name                                            #
+# Side effects: rewrites that file in place                                #
 ############################################################################
-sub opt_split_at_syllables {
+sub write_list_output {
+     my ($file) = @_;
 
-     my $current_item = $_[0];
+     open( my $in, '<:encoding(UTF-8)', $file ) or return;
+     my $text = do { local $/; <$in> };
+     close $in;
 
-     # NEW in 373: Changed \n to \r\n in replace expression. Otherwise, the     #
-     #             newline gets eaten (possibly by the clean-up routine)        #
-     $current_item =~ s/\./\r\n/g;
-     $current_item =~ s/ /\r\n/g;
+     $text =~ s/\[UtteranceBoundary\]/ /g;
+     $text =~ s/\(\.{1,3}\)/ /g;
+     $text =~ s/[|‖#]+/ /g;
 
-     $current_item =~ s/#//g;
-     $current_item =~ s/\(//g;
-     $current_item =~ s/\)//g;
+     my @items = split /\s+/, $text;
+     @items = map { split /\./ } @items if $list_mode eq 'syllables';
+     @items = grep { length } @items;
 
-     # Remove double newlines
-     $current_item =~ s/\n\n/\n/g;
-
-     return ($current_item);
-
+     open( my $out, '>:encoding(UTF-8)', $file ) or return;
+     print $out "$_\n" for @items;
+     close $out;
 }
 
-############################################################################
-#                                                                          #
-# SUBROUTINE: REPLACE .VRT PLACEHOLDERS                                    #
-#                                                                          #
-############################################################################
-sub replace_vrt_placeholders {
-
-     my $current_item = $_[0];
-
-     $temp = Encode::encode_utf8($current_item);    # AD-HOC DEBUG
-                                                    #print STDOUT "VRT-ELIMIN-PLCHLD-BEF:$current_item:\n";    # AD-HOC DEBUG
-
-     # Placeholders to replace with other things
-     $current_item =~ s/þ//g;                      # Period
-     $current_item =~ s/¢//g;                      # Comma
-     $current_item =~ s/ĸ//g;                      # Colon
-     $current_item =~ s/ð//g;                      # Dash
-     $current_item =~ s/ł//g;                      # Quotation mark
-     $current_item =~ s/ŋ//g;                      # Opening question mark
-     $current_item =~ s/µµ//g;                    # Paragraph marker
-     $current_item =~ s/µ//g;                      # Sentence marker
-     $current_item =~ s/ø/ /g;
-     $current_item =~ s/½/ /g;
-
-     # Placeholders to kill #NEW IN 402
-     $current_item =~ s/ø$//g;
-     $current_item =~ s/^ø//g;
-
-     # Kill leading or trailing spaces that may crop up
-     $current_item =~ s/^ //g;
-     $current_item =~ s/ $//g;
-
-     $temp = Encode::encode_utf8($current_item);    # AD-HOC DEBUG
-                                                    #print STDOUT "VRT-ELIMIN-PLCHLD-AFT:$current_item:\n";    # AD-HOC DEBUG
-
-     return ($current_item);
-}    # END OF SUBROUTINE: REPLACE .VRT PLACEHOLDERS
 
 #################################################################################
 #                        SUBROUTINE: Clean up pauses                            #
@@ -15882,8 +15514,9 @@ sub clean_up_pauses {
      # Merge a final bracket or comma break followed by a paragraph break. #
      $current_item =~ s/\(\.\) ###/###/g;
 
-     # Merge a final bracket or comma break followed by a paragraph break. #
-     $current_item =~ s/###$/\n/g;
+     # Remove the paragraph break at the end of the line: Stage 2 ends every #
+     # line itself (a space is left, so the end-of-line rules below match).  #
+     $current_item =~ s/\s*###$/ /g;
 
      # Merge an IPA MINOR group and MAJOR group when the occur together,   #
      # leaving only the major group symbol.                                #
@@ -15902,10 +15535,8 @@ sub clean_up_pauses {
      # Eliminate IPA minor group symbol at end of line                     #
      $current_item =~ s/ \| $//g;
 
-     # Eliminate whitespace at END of line.                                #
-     # Note that at least one whitespace character must remain, or else    #
-     # all lines are merged into one.                                      #
-     $current_item =~ s/\s(\s)+$/$1/g;
+     # Eliminate whitespace at END of line. Stage 2 adds the line break.   #
+     $current_item =~ s/\s+$//g;
 
      # Eliminate SPACES (but NOT other whitespace) at BEGINNING of line    #
      $current_item =~ s/^( )+//g;
@@ -16206,8 +15837,10 @@ sub finalize_phon_string {
 sub token_to_phoneme_words {
      my $t = shift;
      return () unless defined $t && $t =~ /\S/;
-     # An ellipsis on its own is the long pause, as in running text.
+     # An ellipsis on its own is the long pause, as in running text, and
+     # nothing (an empty field) with -nopel.
      if ( $t =~ /^\s*(?:\.{2,}|…+)\s*$/ ) {
+          return () if $add_ellipsis_pauses == 0;
           my ( $sym ) = builtin_bypass('qqlongpauseqq');
           return ($sym);
      }

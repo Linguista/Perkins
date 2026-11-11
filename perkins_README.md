@@ -1,12 +1,12 @@
 # perkins_README.md
 
-Documents Perkins 2.0.37, the Spanish phonological transcriber (Scott Sadowsky, GNU AGPL v3).
+Documents Perkins 2.0.38, the Spanish phonological transcriber (Scott Sadowsky, GNU AGPL v3).
 
 The source, the binaries for Linux, Windows and macOS and the Linux packages are at https://github.com/Linguista/Perkins, whose main page also shows every option with examples.
 
 ## Purpose
 
-Perkins turns Spanish orthographic text into phonemic or narrow (allophonic) transcription, with syllabification and stress, or into category strings (CV, CVG, CVN, manner, place, voicing). It has modes for running text, word lists, verticalized text, Montreal Forced Aligner dictionaries, Praat word tiers (`-phonword`) and token-aligned output for FreeLing CoNLL files (`--tokens`).
+Perkins turns Spanish orthographic text into phonemic or narrow (allophonic) transcription, with syllabification and stress, or into category strings (CV, CVG, CVN, manner, place, voicing). It has modes for running text, lists of words or syllables (`-owl`, `-vrt`, `-sas`), Montreal Forced Aligner dictionaries, Praat word tiers (`-phonword`) and token-aligned output for FreeLing CoNLL files (`--tokens`).
 
 The full option list is `perkins -h`; examples are `perkins -u`.
 
@@ -23,7 +23,11 @@ perkins -nocfg -b -tok -nt -i=sentences.tok -o=sentences.out
 
 ### Pauses
 
-A comma is the short pause |; a full stop, question mark, exclamation mark, colon, semicolon, ellipsis or dash is the long pause ‖ (|| with `-lp2`), after a word or a number, in running text and in token mode. A pause blocks the narrow rules that apply across words: in "la lluvia, bajo el techo" bajo keeps its stop (ˈba.xo), while in "la lluvia bajo el techo" it is lenited (ˈʋa.xo). `-nocmp` makes the comma no pause at all; `-mfa`, `-phonword` and vertical output switch comma pauses off themselves.
+A comma is the short pause |; a full stop, question mark, exclamation mark, colon, semicolon, ellipsis or dash is the long pause ‖ (|| with `-lp2`), after a word or a number, in running text and in token mode. The period of an abbreviation (Sr., Sra., art., Bs. As., no. 5) is not a pause, so the abbreviation is read in full. A pause blocks the narrow rules that apply across words: in "la lluvia, bajo el techo" bajo keeps its stop (ˈba.xo), while in "la lluvia bajo el techo" it is lenited (ˈʋa.xo). `-nocmp`, `-noclp`, `-noscp`, `-nosnp` and `-noelp` make the comma, colon, semicolon, sentence end and ellipsis no pause at all; `-mfa`, `-phonword` and the lists switch pauses off themselves. Each input line gives its own output line.
+
+### Lists of words and syllables
+
+`-owl` writes one transcribed word per line and `-sas` (`-osl`) one syllable per line, in the order of the text, with no pauses. Words are syllabified word by word. Syllables are cut from running text (del año gives d̪e, la, ɲo) or, with `-nosbu`, from each word (d̪el, a, ɲo), and carry no stress mark. `-vrt` is a word list with its own settings: stress as an accent on the vowel, one character per phoneme, a default output name ending in `.vrt`; with `-sas` it gives a syllable list.
 
 ### Numbers
 
@@ -49,9 +53,11 @@ The seven transcription columns of the COSCACH CoNLL files are produced with:
 | narrow, no syllabification, stress as an accent on the vowel | `-tok -nt -nosd -st` |
 | manner, place, voicing | `-tok -f=MANNER`, `-tok -f=PLACE`, `-tok -f=V` |
 
-### `-phonword` with `-wl`
+### `-phonword`
 
-Exactly one output line per input line: the input line verbatim, a TAB, and the transcription of everything that line produced (14 gives catorce; a multiword gives its words joined by a space). `-phonword` honours `-f=`, `-nosd`, `-ss`, `-nsm` and `-st`.
+One word per line: the word as written, with its capital letters and accents, a TAB, and its transcription with syllables and stress.
+
+With `-wl`, exactly one output line per input line: the input line verbatim, a TAB, and the transcription of everything that line produced (14 gives catorce; a multiword gives its words joined by a space). `-phonword` honours `-f=`, `-nosd`, `-ss`, `-nsm` and `-st`.
 
 ## Built-in pronunciations
 
@@ -104,11 +110,11 @@ Ready-built binaries and packages are attached to each release on the Releases p
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.37-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.37-1_amd64.deb` |
-| `perkins-2.0.37-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.37-1.x86_64.rpm` |
-| `perkins-2.0.37-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.37-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.37-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.37-1_arm64.deb` |
-| `perkins-2.0.37-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.37-1.aarch64.rpm` |
+| `perkins_2.0.38-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.38-1_amd64.deb` |
+| `perkins-2.0.38-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.38-1.x86_64.rpm` |
+| `perkins-2.0.38-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.38-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.38-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.38-1_arm64.deb` |
+| `perkins-2.0.38-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.38-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | as described below the table |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | as described below the table |
 | `perkins-windows-x86_64.exe` | Windows (also Windows on ARM, which runs it through its emulation) | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -124,11 +130,11 @@ pp -M Roman -M Lingua::ES::Numeros -o perkins perkins.pl
 ./perkins -h 2>&1 | grep -m1 'Perkins v'
 ```
 
-It must print `Perkins v2.0.37`.
+It must print `Perkins v2.0.38`.
 
 ## Checking a build
 
-`tests/` holds the test sentence approved on 261030 with its expected phonemic and narrow output, a token file with its expected output for each of the seven CoNLL columns, the phrase readings, an ellipsis token, and the cases of commas, uno, diphthongs, ui, the any-case table, the colon and the full stop after a number as long pauses, NFC output. In the folder holding `tests/`, check the binary on the PATH:
+`tests/` holds the test sentence approved on 261030 with its expected phonemic and narrow output, a token file with its expected output for each of the seven CoNLL columns, the phrase readings, an ellipsis token, and the cases of commas, uno, diphthongs, ui, the any-case table, the colon and the full stop after a number as long pauses, NFC output, the word and syllable lists, abbreviations, and `-noelp` and `-nosnp`. In the folder holding `tests/`, check the binary on the PATH:
 
 ```bash
 bash tests/run-test.sh
@@ -155,6 +161,7 @@ It prints ok or FAIL for each test, with the differences, and ALL TESTS PASSED a
 
 ## Version history
 
+- **2.0.38** (2026-11-11): `-owl`, `-sas` and the new `-osl` and `-usl` write one word or syllable per line, without pauses (they wrote one line, words run together); syllable lists cut from running text or, with `-nosbu`, from each word; `-vrt` is a word list with its own settings, through the ordinary pipeline (its old pipeline for Connexor VRT files gave kon.sep.si.ón), and an input ending in .vrt no longer selects it; every input line keeps its own output line (with `-noppp` they were glued together); `-noelp` and `-nosnp` work; the period of an abbreviation is not a sentence end (Sr. Pérez was esr ‖ ˈpe.ɾes); `-f=PLACE` writes a vowel as -, not V; `-phonword` keeps capital letters and writes no line for a full stop; the output file may not be the input file; `perkins -u` shows real output, with the voicing key corrected (S voiced, A voiceless).
 - **2.0.37** (2026-11-10): no change in output. Comments and documents no longer name files, folders and projects that are not part of Perkins; the help banner names the licence file as `LICENSE.md`; every option with real examples on the main page of the repository (`README.md`); binaries for Linux and macOS on both Intel and ARM processors, and `.deb` and `.rpm` packages for ARM; the GitHub build checks the repository for private information before building.
 - **2.0.36** (2026-11-10): no change in output. Comments and documents reworded, version numbers taken out of the comments outside the changelog, the error for the old -g2p option no longer names a version; the source published at https://github.com/Linguista/Perkins, where GitHub builds and tests binaries for Linux, Windows and macOS; the tests ignore line endings, so they also run on Windows.
 - **2.0.35** (2026-11-10): 2,655 respellings of the COSCACH spelling review as a built-in table matched in any case, five more phrases, aylwin ˈejl.win, revenge re.ˈbenʝ and selj selʝ as fixed transcriptions; entries ending in a period (J., Dr., C.C.U.) now match; a comma is the short pause in running text, as with `--tokens`; a written uno is never cut to un; syllable breaks after a diphthong with a written accent (náufrago, máicro) and before a liquid and a glide (dinosaurio, bourbon); the -uir hiatus only in -uir verb forms (buitre, Luis, huincha, intuición); y as a vowel or glide beside a consonant (Lynn, whisky, Reynaldo); no syllable without a vowel; a colon is always the long pause, and so is a full stop after a number; `--tokens` honours `-lp2`; every output file except an `-mfa` dictionary is NFC; a number before a noun agrees with it in gender (una casa, veintiún años, doscientas personas); 12.30 is doce punto treinta; feminine and plural ordinals (1.ª and 1a primera, 3as terceras, 1er primer); `-nopi` symbols after a word and for commas; `-noclp` and `-noscp` work in running text.

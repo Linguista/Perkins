@@ -4,9 +4,13 @@ Sequential steps, numbered with gaps (10, 20, 30…) for later insertion.
 
 ---
 
-> **Currency check (261110).** This document is current as of Perkins
-> **v2.0.37**, which, like v2.0.36, changed no output. **v2.0.35** changed no narrow rule
-> but changed what the rules see:
+> **Currency check (261111).** This document is current as of Perkins
+> **v2.0.38**, which changed no narrow rule but changed what the rules see
+> in two places: the period of an abbreviation (Sr., art., Bs. As.) is no
+> longer a pause, and `-noelp` and `-nosnp` now delete an ellipsis or a
+> sentence end, so the rules apply across them. It also rebuilt the word
+> and syllable lists (§60). v2.0.36 and v2.0.37 changed no output.
+> **v2.0.35** changed no narrow rule but changed what the rules see:
 > a comma is now the short pause | in running text too (as with `--tokens`),
 > so the rules no longer apply across it (la lluvia, bajo: ˈba.xo), and
 > several words are syllabified differently (narrow, as printed in token
@@ -54,7 +58,7 @@ Confirm the version:
 perkins -h 2>&1 | grep -m1 'Perkins v'
 ```
 
-It must show `Perkins v2.0.37` (or later). 2.0.33 added built-in phrase readings; 2.0.34 made an ellipsis token a pause in token mode; 2.0.35 made the comma a pause in running text and fixed syllable breaks and the -uir hiatus; 2.0.36 and 2.0.37 changed no output. None of them changed a narrow rule. An older number means the binary was not
+It must show `Perkins v2.0.38` (or later). 2.0.33 added built-in phrase readings; 2.0.34 made an ellipsis token a pause in token mode; 2.0.35 made the comma a pause in running text and fixed syllable breaks and the -uir hiatus; 2.0.36 and 2.0.37 changed no output; 2.0.38 rebuilt the lists and stopped the period of an abbreviation from being a pause. None of them changed a narrow rule. An older number means the binary was not
 recompiled: editing the `.pl` alone does not change it.
 
 ---
@@ -112,7 +116,7 @@ perkins -i=in.txt -o=out.MFA -mfa --mfa-wl --narrow      # one-word-per-line dic
 perkins -i=in.txt -o=out.MFA -mfa --mfa-rt --narrow      # running-text dictionary
 perkins -i=in.txt -o=out.PHONWORD -phonword --narrow
 perkins -i=in.txt -o=out.COSCACH -coscach --narrow
-perkins -i=in.txt -o=out.vrt -vrt --narrow                # see §60 for a caveat
+perkins -i=in.txt -o=out.vrt -vrt --narrow                # word list, one word per line
 perkins -i=in.txt -o=out.MANNER.txt -manner --narrow
 perkins -i=in.txt -o=out.PLACE.txt -place --narrow
 perkins -i=in.tok -o=out.tok -tok --narrow                # v2.0.32: TAB-separated tokens per sentence
@@ -123,7 +127,7 @@ and `-st`, and with `-wl` writes exactly one line per input line.
 
 **Blocked, by design, with a clear error:**
 ```
-perkins -i=in.txt -o=out.CV.txt -cv --narrow        # ERRORS -- see §60
+perkins -i=in.txt -o=out.CV.txt -cv --narrow        # ERRORS -- see below
 perkins -i=in.txt -o=out.CVG.txt -cvg --narrow      # ERRORS
 perkins -i=in.txt -o=out.CVNLRG.txt -cvn --narrow   # ERRORS
 perkins -i=in.txt -o=out.VOICING.txt -voicing --narrow  # ERRORS
@@ -202,17 +206,19 @@ silent.
    token and after a number (it was |), and made a full stop after a
    number the long pause in running text (it was deleted).
 
-2. **`-vrt` mode cosmetic spacing quirk**: when a single input line
-   produces multiple output lines in `-vrt` mode, the surrounding
-   space/newline at the join point between what were originally
-   separate lines is missing in the final output (e.g. a pause symbol
-   may end up directly touching the word before/after it with no
-   space). Confirmed this is a genuinely pre-existing Perkins
-   behavior — present identically in the untouched v2.0.8 baseline,
-   unrelated to `--narrow`. **The actual phonological correctness is
-   NOT affected** — a boundary still correctly blocks a cross-word
-   rule from firing even when the visible space around it is missing.
-   Not yet fixed; flagged here for awareness.
+2. **The lists (`-owl`, `-vrt`, `-sas`).** The narrow rules run on
+   the whole line, as in running text, and the list is cut from the
+   result, so a word in a word list shows the allophones it has in
+   its sentence (en Concepción gives ẽŋ, not en). A word list runs
+   with every pause off, so the rules also apply across what were
+   commas and full stops; a syllable list keeps the pauses until the
+   list is cut. v2.0.38 rebuilt the lists this way: until then they
+   came out on one line, and the join between input lines lost its
+   space (the spacing problem noted here before), which no longer
+   happens in any mode.
+3. **The period of an abbreviation** (Sr., art., Bs. As.) is not a
+   pause since v2.0.38, so the rules apply across it like any word
+   boundary (el Sr. Pérez: se.ˈɲoɾ.ˈpe.ɾes, one phrase).
 
 ---
 
@@ -242,11 +248,6 @@ the shape was:
 
 ## 80. Still open / future work
 
-- Fix the `-vrt` Stage-2 newline/spacing issue (§60.2), if it turns
-  out to matter for real corpus work in that mode.
-- `-vrt` writes its whole output as one line, and reads the `<s>`
-  tags of a VRT file as words. It is kept for the
-  software that reads VRT files, and its repair is still to be done.
 - Not yet tested: `--narrow` combined with numbers/dates/currency/
   temperature expansion sitting immediately adjacent to a new
   utterance-boundary character; a full (non-spot-check) scan of

@@ -550,8 +550,9 @@ work — the pre-existing `[InvalidDate]` sentinel was equally broken in
 `--narrow` introduced. Fixed by excluding only the spaces directly
 touching a bracket, rather than treating all spaces alike.
 
-**Found and deliberately NOT fixed**, flagged rather than silently
-patched: a separate, deeper `-vrt` architectural quirk. Stage 2's
+**Found and deliberately NOT fixed** at the time (fixed in v2.0.38, see
+below), flagged rather than silently patched: a separate, deeper `-vrt`
+architectural quirk. Stage 2's
 read/chomp/rewrite cycle does not reinsert newlines or spaces between
 what were originally separate output lines, so a pause symbol can end up
 touching the word before or after it. Confirmed identical in the
@@ -560,6 +561,12 @@ still fire and block correctly across that join**, which is why it was
 left: fixing it is a separate and larger undertaking than it looks, and
 doing it quietly inside a `--narrow` release would have buried a real
 change to shared code.
+
+**v2.0.38.** Stage 2 now ends every line with its own line break, so no
+two lines are joined in any mode. `-vrt` no longer has a pipeline of its
+own: `do_vrt_preprocessing()` and the other code for Connexor VRT input
+are gone, and `-vrt` is a word list made like `-owl`. The narrow rules
+are unchanged.
 
 ---
 
