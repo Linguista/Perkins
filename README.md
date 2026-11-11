@@ -13,6 +13,8 @@ Author: Scott Sadowsky (http://sadowsky.cl). Licence: GNU Affero General Public 
 
 Every example on this page was produced by Perkins 2.0.37 itself.
 
+This is essentially an entirely new program with regard to Perkins 1.0.x. Binaries for Linux, Windows and macOS on Intel and ARM processors, and .deb, .rpm and Arch Linux packages are all built and tested by GitHub. The source code is the original Perl script.
+
 ## Contents
 
 - [Download and installation](#download-and-installation)
