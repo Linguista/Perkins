@@ -43,7 +43,7 @@ Sequential steps, numbered with gaps (10, 20, 30…) for later insertion.
 > gets ʋ, ð̞, ɣ̞. Until v2.0.31 only an onset between two vowels lenited, so
 > lluvia, agua, adiós, árbol, algo and padre kept their stops. v2.0.32 also
 > palatalizes velars before the glide j, stops `-oa` from blocking the
-> rules, and makes `-phonword` honour `-f=`, `-nosd` and the rest. The
+> rules, and makes `-phonword` honor `-f=`, `-nosd` and the rest. The
 > rule-by-rule detail is in `perkins-narrow-transcription-ruleset_README.md`.
 >
 > It is the authoritative source for `--narrow`.
@@ -138,7 +138,7 @@ perkins -i=in.txt -o=out.PLACE.txt -place --narrow
 perkins -i=in.tok -o=out.tok -tok --narrow                # v2.0.32: TAB-separated tokens per sentence
 ```
 
-Since v2.0.32, `-phonword` also honours `-f=MANNER`, `-f=PLACE`, `-nosd`
+Since v2.0.32, `-phonword` also honors `-f=MANNER`, `-f=PLACE`, `-nosd`
 and `-st`, and with `-wl` writes exactly one line per input line.
 
 **Blocked, by design, with a clear error:**
@@ -190,7 +190,7 @@ context is discarded from the dictionary. Measured on a seven-word list:
 
 Plain `-mfa` on the same seven words drops nothing.
 
-**What does NOT drop, contrary to the obvious guess:** rule 11's nasalised
+**What does NOT drop, contrary to the obvious guess:** rule 11's nasalized
 vowels. In `-mfa` output they are DECOMPOSED — base vowel plus U+0303 — and
 that is the form the inventory holds; only the precomposed single codepoints
 need aliasing, and they are aliased. **Rule 11 is safe in `-mfa` mode; rule
@@ -206,7 +206,7 @@ would read as phones the model has never seen.
 | `--narrow` inside `-mfa` anyway | supply an inventory containing the dental nasal via `--mfa-phoneset FILE` (v2.0.23) |
 
 **This is not a bug in either flag.** `--narrow` describes Chilean speech,
-and Chilean /n/ genuinely dentalises before a dental stop. The inventory
+and Chilean /n/ genuinely dentalizes before a dental stop. The inventory
 describes what an acoustic model was trained on. They answer different
 questions, and v2.0.20 exists so the disagreement is loud rather than
 silent.
@@ -275,6 +275,6 @@ the shape was:
   proposed again: Chilean CH/TR allophony. It is sociolinguistically,
   not phonologically, conditioned, so neither `--narrow` nor MFA's
   `rules.yaml` can express when each variant applies. It belongs to the
-  phone recogniser, discovered from real audio. A proposal to use
-  `--narrow` output as a categorical prior for phone-recogniser training
+  phone recognizer, discovered from real audio. A proposal to use
+  `--narrow` output as a categorical prior for phone-recognizer training
   was raised and retracted for the same reason.

@@ -74,7 +74,7 @@ The test script needs bash (Git Bash or WSL): `bash tests/run-test.sh ./perkins.
 
 ## 55. Binaries and packages built by GitHub
 
-The public repository is https://github.com/Linguista/Perkins. It holds the source as `perkins.pl`, `perkins.ini`, this HOWTO and the other documents, `tests/`, the licence, the build instructions for GitHub (`.github/workflows/build.yml`) and the description of the Linux packages (`packaging/nfpm.yaml`).
+The public repository is https://github.com/Linguista/Perkins. It holds the source as `perkins.pl`, `perkins.ini`, this HOWTO and the other documents, `tests/`, the license, the build instructions for GitHub (`.github/workflows/build.yml`) and the description of the Linux packages (`packaging/nfpm.yaml`).
 
 When a release is published there, GitHub:
 
@@ -97,7 +97,7 @@ When a release is published there, GitHub:
 | `perkins-macos-arm64` | macOS on Apple Silicon (M1 and later) | as on Linux; see the notes below |
 | `perkins-macos-x86_64` | macOS on Intel processors | as on Linux; see the notes below |
 
-The package names carry the version, so they change with every release. A package puts `perkins` in `/usr/bin`, the documents and a sample `perkins.ini` in `/usr/share/doc/perkins/` and the licence in `/usr/share/licenses/perkins/`; `sudo apt remove perkins`, `sudo dnf remove perkins` or `sudo pacman -R perkins` takes it out again. The packages are not in the distributions' own repositories, so they do not update themselves: a newer one is installed over the old one the same way.
+The package names carry the version, so they change with every release. A package puts `perkins` in `/usr/bin`, the documents and a sample `perkins.ini` in `/usr/share/doc/perkins/` and the license in `/usr/share/licenses/perkins/`; `sudo apt remove perkins`, `sudo dnf remove perkins` or `sudo pacman -R perkins` takes it out again. The packages are not in the distributions' own repositories, so they do not update themselves: a newer one is installed over the old one the same way.
 
 One `.deb` serves both Debian and Ubuntu: it holds a binary that needs nothing from the system but its C library. GitHub tests it on Debian stable and Ubuntu 24.04. The binaries are built on Ubuntu 22.04, so systems older than Ubuntu 22.04 or Debian 12 may lack the C library they need. There is no Arch Linux package for ARM processors, since Arch Linux itself runs only on Intel and AMD processors.
 

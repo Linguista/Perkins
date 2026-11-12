@@ -609,7 +609,7 @@ Measured on a seven-word list:
 
 Plain `-mfa` on the same seven words drops nothing.
 
-**What does NOT drop, contrary to what one would guess:** the nasalised
+**What does NOT drop, contrary to what one would guess:** the nasalized
 vowels from rule 11. They are emitted DECOMPOSED — base vowel plus U+0303 —
 and that is the form the inventory holds. Only the precomposed single
 codepoints need aliasing, and they are aliased. Rule 11 is therefore safe in
@@ -625,7 +625,7 @@ codepoints need aliasing, and they are aliased. Rule 11 is therefore safe in
 | `--narrow` inside `-mfa` anyway | supply an inventory containing the dental nasal via `--mfa-phoneset FILE` (v2.0.23), which overrides the built-in list |
 
 **This is not a bug in either flag.** `--narrow` describes Chilean speech, and
-Chilean /n/ genuinely dentalises before a dental stop. The inventory describes
+Chilean /n/ genuinely dentalizes before a dental stop. The inventory describes
 what an acoustic model was trained on. They are answering different questions,
 and v2.0.20 exists precisely so that the disagreement is loud instead of
 silent.
@@ -651,7 +651,7 @@ change the surroundings.
 - **v2.0.20** — the inventory enforcement described in the section above.
 - **v2.0.22** — three rules removed from `--mfa-rules` as not occurring in
   Chilean Spanish. Listed here only to be explicit that **`--narrow` was not
-  among the things changed**: the removals were lateral palatalisation before
+  among the things changed**: the removals were lateral palatalization before
   a high front vocoid, coda obstruent lenition, and s-voicing before a voiced
   consonant, none of which this ruleset ever implemented.
 - **v2.0.23 / v2.0.24 / v2.0.25** — the voiced palatal affricate became

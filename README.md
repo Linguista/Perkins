@@ -1,7 +1,7 @@
 # Perkins
 
 ![version](https://img.shields.io/badge/version-2.0.42-1f6feb?style=flat-square)
-![licence](https://img.shields.io/badge/licence-AGPL--3.0-2da44e?style=flat-square)
+![license](https://img.shields.io/badge/license-AGPL--3.0-2da44e?style=flat-square)
 ![platforms](https://img.shields.io/badge/runs%20on-Linux%20%7C%20Windows%20%7C%20macOS-8250df?style=flat-square)
 ![processors](https://img.shields.io/badge/processors-x86--64%20%7C%20ARM64-0969da?style=flat-square)
 ![input](https://img.shields.io/badge/input-UTF--8-bf8700?style=flat-square)
@@ -9,7 +9,7 @@
 
 Perkins turns Spanish orthographic text into phonemic or semi-narrow transcription (phonemic with all phonologically predictable changes), with syllabification and stress, or into category strings (CV, CVG, CVN, manner, place, voicing). It has modes for running text, lists of words or syllables, Montreal Forced Aligner dictionaries, Praat word tiers and token-aligned output for FreeLing CoNLL files. Its semi-narrow transcription follows Chilean Spanish.
 
-Author: Scott Sadowsky (http://sadowsky.cl). Licence: GNU Affero General Public License, version 3 (`LICENSE.md`).
+Author: Scott Sadowsky (http://sadowsky.cl). License: GNU Affero General Public License, version 3 (`LICENSE.md`).
 
 Every example on this page was produced by Perkins 2.0.42 itself.
 
@@ -94,7 +94,7 @@ Unless another input is shown, every example transcribes this file, `source.txt`
 En Concepción, se trata de aguantar la lluvia durante 5 meses del año. ¿Cachái?
 ```
 
-In the examples, the command is on the coloured `@@` line and Perkins' output on the green `+` line.
+In the examples, the command is on the colored `@@` line and Perkins' output on the green `+` line.
 
 ## Phonemic and semi-narrow transcription
 
