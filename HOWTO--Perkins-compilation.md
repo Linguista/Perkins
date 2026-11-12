@@ -86,11 +86,11 @@ When a release is published there, GitHub:
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.41-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.41-1_amd64.deb` |
-| `perkins-2.0.41-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.41-1.x86_64.rpm` |
-| `perkins-2.0.41-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.41-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.41-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.41-1_arm64.deb` |
-| `perkins-2.0.41-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.41-1.aarch64.rpm` |
+| `perkins_2.0.42-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.42-1_amd64.deb` |
+| `perkins-2.0.42-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.42-1.x86_64.rpm` |
+| `perkins-2.0.42-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.42-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.42-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.42-1_arm64.deb` |
+| `perkins-2.0.42-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.42-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | `chmod +x perkins-linux-x86_64` and move it to a folder on the PATH as `perkins` |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | as above |
 | `perkins-windows-x86_64.exe` | Windows, also Windows on ARM, which runs it through its emulation | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -106,8 +106,8 @@ These are all the systems GitHub can build on. Not covered: 32-bit systems, and 
 ### Publishing a release
 
 1. Open https://github.com/Linguista/Perkins/releases/new
-2. In **Choose a tag**, type the version, for example `2.0.41`, and click **Create new tag: 2.0.41 on publish**. Leave **Target** at `master`.
-3. Give it a title (`Perkins 2.0.41`) and a description.
+2. In **Choose a tag**, type the version, for example `2.0.42`, and click **Create new tag: 2.0.42 on publish**. Leave **Target** at `master`.
+3. Give it a title (`Perkins 2.0.42`) and a description.
 4. Leave **Set as the latest release** ticked, and press **Publish release**.
 
 The build takes about fifteen minutes; its progress is on the repository's **Actions** tab. When it is green, the binaries and the packages are listed under the release's **Assets**. If one platform fails, the others are still attached, and the failure's log is on the Actions tab.
@@ -152,4 +152,5 @@ The build checks this before anything else. The repository secret `PRIVATE_TERMS
 - 2.0.39 changed nothing in how Perkins is built; the tests grew from 40 to 46.
 - 2.0.40 changed nothing in how Perkins is built; the tests grew from 46 to 57.
 - 2.0.41 changed nothing in how Perkins is built; the tests grew from 57 to 65.
+- 2.0.42 changed nothing in how Perkins is built; the tests grew from 65 to 68.
 - The repository held Perkins 1.0.6 from 2016; that version, with its binaries, stays in the repository's history.

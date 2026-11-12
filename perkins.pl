@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# VERSION 2.0.41
+# VERSION 2.0.42
 
 use strict;
 use warnings;
@@ -32,8 +32,8 @@ use Roman;                                      # Convert Roman numerals
 use Lingua::ES::Numeros;                        # Module to convert numerals to Spanish text.
 
 
-my $version = "2.0.41";
-# Released 2026-11-11
+my $version = "2.0.42";
+# Released 2026-11-12
 
 #######################################################################################
 #                                       Perkins                                       #
@@ -75,6 +75,20 @@ my $version = "2.0.41";
 #################################################################################
 
 # CHANGELOG VIS-A-VIS PERKINS 1.0.6
+#
+# v2.0.42 (2026-11-12)
+# - The input is normalized to Unicode NFC before anything else, so an
+#     accent written as a separate combining character (a + U+0301, as text
+#     copied from macOS, some PDFs and some web pages has it) is one
+#     character, as every rule expects: decomposed triángulo ˈt̪ɾjan.ɡu.lo,
+#     canción kan.ˈsjon, piña ˈpi.ɲa, as in NFC (they were t̪ɾján.ˈɡu.lo,
+#     kan.ˈsjón, piña). On by default; -nonfc, or normalize_nfc_input = 0 in
+#     perkins.ini, turns it off. Text already in NFC is unchanged. Not in
+#     -mfa, whose dictionary headwords stay exactly as written.
+# - A replacement character (U+FFFD, a character lost before the text
+#     reached Perkins) inside a word no longer counts as the start of the
+#     next word for the Mapudungun ng rule of 2.0.41: "<U+FFFD>ngeles" (a lost
+#     á) keeps its n (2.0.41 dropped it). NFC cannot restore a lost character.
 #
 # v2.0.41 (2026-11-12)
 # - ts is an affricate, t͡s, one phoneme: tsunami t͡su.ˈna.mi, tsunamis
@@ -5087,6 +5101,7 @@ our $fix_umlauts          = 1;        # Change vowels with umlauts to bare vowel
 our $fix_grave_accents    = 1;        # Change vowels with umlauts to bare vowels (tù, està > tú, está)
 our $fix_circumflexes     = 1;        # Change vowels with circumflexes to bare vowels (hôstel > hostel)
 our $fix_nasal_tildes     = 1;        # Change vowels with nasal tildes to bare vowels (S~ao > Sao)
+our $normalize_nfc_input  = 1;        # Normalize every input line to Unicode NFC (a + U+0301 > á). Not in -mfa.
 
 # USER OPTIONS - SUBSTITUTIONS       #
 our $moneda        = "pesos";        # String used to replace "$" character
@@ -5858,7 +5873,7 @@ sub mfa_report_dropped {
      }
 }
 
-our %_VAL_DEFAULT = ("debug" => $debug, "debug_syllab_sub" => $debug_syllab_sub, "debug_to_logfile" => $debug_to_logfile, "silent_mode" => $silent_mode, "batch_mode" => $batch_mode, "corpus_running_text" => $corpus_running_text, "syllable_list" => $syllable_list, "mfa_format" => $mfa_format, "phonword_format" => $phonword_format, "vrt_format" => $vrt_format, "output_PHON" => $output_PHON, "output_CV" => $output_CV, "output_CVG" => $output_CVG, "output_CVNLRG" => $output_CVNLRG, "output_manner" => $output_manner, "output_place" => $output_place, "voicing" => $voicing, "multichars" => $multichars, "tr_is_group" => $tr_is_group, "ch_dzh_retracted" => $ch_dzh_retracted, "use_ligatures" => $use_ligatures, "use_one_char_ch_symbol" => $use_one_char_ch_symbol, "ye_phoneme_is_fricative" => $ye_phoneme_is_fricative, "ye_phoneme_is_affricate" => $ye_phoneme_is_affricate, "use_one_char_ye_symbol" => $use_one_char_ye_symbol, "use_dental_diacr" => $use_dental_diacr, "add_epenthetic_g" => $add_epenthetic_g, "glides_with_diacritics" => $glides_with_diacritics, "non_syl_u_with_u_diacr" => $non_syl_u_with_u_diacr, "non_syl_i_with_i_diacr" => $non_syl_i_with_i_diacr, "ch_is_single_char" => $ch_is_single_char, "ch_is_retracted_with_ligature" => $ch_is_retracted_with_ligature, "ch_is_retracted_no_ligature" => $ch_is_retracted_no_ligature, "ch_not_retracted_with_ligature" => $ch_not_retracted_with_ligature, "ch_not_retracted_no_ligature" => $ch_not_retracted_no_ligature, "space_between_phonemes" => $space_between_phonemes, "word_plus_phonemes" => $word_plus_phonemes, "stress_using_tildes" => $stress_using_tildes, "no_stress_marks" => $no_stress_marks, "non_ipa_apostrophes" => $non_ipa_apostrophes, "narrow_transcription" => $narrow_transcription, "insert_syllable_dots" => $insert_syllable_dots, "split_at_syllables" => $split_at_syllables, "syllabify_by_sentence" => $syllabify_by_sentence, "syllable_dots_are_spaces" => $syllable_dots_are_spaces, "ipa_pause_symbols" => $ipa_pause_symbols, "ipa_long_pause_two_singles" => $ipa_long_pause_two_singles, "add_comma_pauses" => $add_comma_pauses, "add_colon_pauses" => $add_colon_pauses, "add_semicolon_pauses" => $add_semicolon_pauses, "add_sentence_breaks" => $add_sentence_breaks, "add_paragraph_breaks" => $add_paragraph_breaks, "add_ellipsis_pauses" => $add_ellipsis_pauses, "add_bracket_pauses" => $add_bracket_pauses, "add_paren_pauses" => $add_paren_pauses, "numerals_to_words" => $numerals_to_words, "num_symbol" => $num_symbol, "decimal_symbol" => $decimal_symbol, "narrow_year_ranges" => $narrow_year_ranges, "broad_year_ranges" => $broad_year_ranges, "bc_dates_included" => $bc_dates_included, "all_year_ranges" => $all_year_ranges, "times_with_colon" => $times_with_colon, "fix_umlauts" => $fix_umlauts, "fix_grave_accents" => $fix_grave_accents, "fix_circumflexes" => $fix_circumflexes, "fix_nasal_tildes" => $fix_nasal_tildes, "moneda" => $moneda, "rut_k_mode" => $rut_k_mode, "slash" => $slash, "process_urls" => $process_urls, "process_email" => $process_email, "name_for_v" => $name_for_v, "keep_paragraphs" => $keep_paragraphs, "vertical_output" => $vertical_output, "triple_vowels_to_double" => $triple_vowels_to_double, "kill_common_words" => $kill_common_words, "upper_case" => $upper_case);
+our %_VAL_DEFAULT = ("debug" => $debug, "debug_syllab_sub" => $debug_syllab_sub, "debug_to_logfile" => $debug_to_logfile, "silent_mode" => $silent_mode, "batch_mode" => $batch_mode, "corpus_running_text" => $corpus_running_text, "syllable_list" => $syllable_list, "mfa_format" => $mfa_format, "phonword_format" => $phonword_format, "vrt_format" => $vrt_format, "output_PHON" => $output_PHON, "output_CV" => $output_CV, "output_CVG" => $output_CVG, "output_CVNLRG" => $output_CVNLRG, "output_manner" => $output_manner, "output_place" => $output_place, "voicing" => $voicing, "multichars" => $multichars, "tr_is_group" => $tr_is_group, "ch_dzh_retracted" => $ch_dzh_retracted, "use_ligatures" => $use_ligatures, "use_one_char_ch_symbol" => $use_one_char_ch_symbol, "ye_phoneme_is_fricative" => $ye_phoneme_is_fricative, "ye_phoneme_is_affricate" => $ye_phoneme_is_affricate, "use_one_char_ye_symbol" => $use_one_char_ye_symbol, "use_dental_diacr" => $use_dental_diacr, "add_epenthetic_g" => $add_epenthetic_g, "glides_with_diacritics" => $glides_with_diacritics, "non_syl_u_with_u_diacr" => $non_syl_u_with_u_diacr, "non_syl_i_with_i_diacr" => $non_syl_i_with_i_diacr, "ch_is_single_char" => $ch_is_single_char, "ch_is_retracted_with_ligature" => $ch_is_retracted_with_ligature, "ch_is_retracted_no_ligature" => $ch_is_retracted_no_ligature, "ch_not_retracted_with_ligature" => $ch_not_retracted_with_ligature, "ch_not_retracted_no_ligature" => $ch_not_retracted_no_ligature, "space_between_phonemes" => $space_between_phonemes, "word_plus_phonemes" => $word_plus_phonemes, "stress_using_tildes" => $stress_using_tildes, "no_stress_marks" => $no_stress_marks, "non_ipa_apostrophes" => $non_ipa_apostrophes, "narrow_transcription" => $narrow_transcription, "insert_syllable_dots" => $insert_syllable_dots, "split_at_syllables" => $split_at_syllables, "syllabify_by_sentence" => $syllabify_by_sentence, "syllable_dots_are_spaces" => $syllable_dots_are_spaces, "ipa_pause_symbols" => $ipa_pause_symbols, "ipa_long_pause_two_singles" => $ipa_long_pause_two_singles, "add_comma_pauses" => $add_comma_pauses, "add_colon_pauses" => $add_colon_pauses, "add_semicolon_pauses" => $add_semicolon_pauses, "add_sentence_breaks" => $add_sentence_breaks, "add_paragraph_breaks" => $add_paragraph_breaks, "add_ellipsis_pauses" => $add_ellipsis_pauses, "add_bracket_pauses" => $add_bracket_pauses, "add_paren_pauses" => $add_paren_pauses, "numerals_to_words" => $numerals_to_words, "num_symbol" => $num_symbol, "decimal_symbol" => $decimal_symbol, "narrow_year_ranges" => $narrow_year_ranges, "broad_year_ranges" => $broad_year_ranges, "bc_dates_included" => $bc_dates_included, "all_year_ranges" => $all_year_ranges, "times_with_colon" => $times_with_colon, "fix_umlauts" => $fix_umlauts, "fix_grave_accents" => $fix_grave_accents, "fix_circumflexes" => $fix_circumflexes, "fix_nasal_tildes" => $fix_nasal_tildes, "normalize_nfc_input" => $normalize_nfc_input, "moneda" => $moneda, "rut_k_mode" => $rut_k_mode, "slash" => $slash, "process_urls" => $process_urls, "process_email" => $process_email, "name_for_v" => $name_for_v, "keep_paragraphs" => $keep_paragraphs, "vertical_output" => $vertical_output, "triple_vowels_to_double" => $triple_vowels_to_double, "kill_common_words" => $kill_common_words, "upper_case" => $upper_case);
 
 
 ############################################################################
@@ -5952,6 +5967,7 @@ GetOptions(
      "mfa-wl|mfa-word-list!"                       => \$mfa_force_word_list,     # Force -mfa to treat input as one-word-per-line
      "nia|oa|ao!"                                  => \$non_ipa_apostrophes,
      "narrow|nt!"                                  => \$narrow_transcription,     # Apply narrow (allophonic) transcription rules
+     "nfc!"                                        => \$normalize_nfc_input,      # Normalize the input to Unicode NFC (on; -nonfc turns it off)
      "nyr|rae!"                                    => \$narrow_year_ranges,
      "och!"                                        => \$use_one_char_ch_symbol,
      "oye!"                                        => \$use_one_char_ye_symbol,
@@ -5974,7 +5990,7 @@ GetOptions(
 # Snapshot after CLI flags have been applied, before perkins.ini.
 # Any var that differs from %_VAL_DEFAULT was set on the command line.
 our %_SET_BY_INI = ();    # vars set by perkins.ini; populated in ini reader loop
-our %_VAL_AFTER_CLI = ("debug" => $debug, "debug_syllab_sub" => $debug_syllab_sub, "debug_to_logfile" => $debug_to_logfile, "silent_mode" => $silent_mode, "batch_mode" => $batch_mode, "corpus_running_text" => $corpus_running_text, "syllable_list" => $syllable_list, "mfa_format" => $mfa_format, "phonword_format" => $phonword_format, "vrt_format" => $vrt_format, "output_PHON" => $output_PHON, "output_CV" => $output_CV, "output_CVG" => $output_CVG, "output_CVNLRG" => $output_CVNLRG, "output_manner" => $output_manner, "output_place" => $output_place, "voicing" => $voicing, "multichars" => $multichars, "tr_is_group" => $tr_is_group, "ch_dzh_retracted" => $ch_dzh_retracted, "use_ligatures" => $use_ligatures, "use_one_char_ch_symbol" => $use_one_char_ch_symbol, "ye_phoneme_is_fricative" => $ye_phoneme_is_fricative, "ye_phoneme_is_affricate" => $ye_phoneme_is_affricate, "use_one_char_ye_symbol" => $use_one_char_ye_symbol, "use_dental_diacr" => $use_dental_diacr, "add_epenthetic_g" => $add_epenthetic_g, "glides_with_diacritics" => $glides_with_diacritics, "non_syl_u_with_u_diacr" => $non_syl_u_with_u_diacr, "non_syl_i_with_i_diacr" => $non_syl_i_with_i_diacr, "ch_is_single_char" => $ch_is_single_char, "ch_is_retracted_with_ligature" => $ch_is_retracted_with_ligature, "ch_is_retracted_no_ligature" => $ch_is_retracted_no_ligature, "ch_not_retracted_with_ligature" => $ch_not_retracted_with_ligature, "ch_not_retracted_no_ligature" => $ch_not_retracted_no_ligature, "space_between_phonemes" => $space_between_phonemes, "word_plus_phonemes" => $word_plus_phonemes, "stress_using_tildes" => $stress_using_tildes, "no_stress_marks" => $no_stress_marks, "non_ipa_apostrophes" => $non_ipa_apostrophes, "narrow_transcription" => $narrow_transcription, "insert_syllable_dots" => $insert_syllable_dots, "split_at_syllables" => $split_at_syllables, "syllabify_by_sentence" => $syllabify_by_sentence, "syllable_dots_are_spaces" => $syllable_dots_are_spaces, "ipa_pause_symbols" => $ipa_pause_symbols, "ipa_long_pause_two_singles" => $ipa_long_pause_two_singles, "add_comma_pauses" => $add_comma_pauses, "add_colon_pauses" => $add_colon_pauses, "add_semicolon_pauses" => $add_semicolon_pauses, "add_sentence_breaks" => $add_sentence_breaks, "add_paragraph_breaks" => $add_paragraph_breaks, "add_ellipsis_pauses" => $add_ellipsis_pauses, "add_bracket_pauses" => $add_bracket_pauses, "add_paren_pauses" => $add_paren_pauses, "numerals_to_words" => $numerals_to_words, "num_symbol" => $num_symbol, "decimal_symbol" => $decimal_symbol, "narrow_year_ranges" => $narrow_year_ranges, "broad_year_ranges" => $broad_year_ranges, "bc_dates_included" => $bc_dates_included, "all_year_ranges" => $all_year_ranges, "times_with_colon" => $times_with_colon, "fix_umlauts" => $fix_umlauts, "fix_grave_accents" => $fix_grave_accents, "fix_circumflexes" => $fix_circumflexes, "fix_nasal_tildes" => $fix_nasal_tildes, "moneda" => $moneda, "rut_k_mode" => $rut_k_mode, "slash" => $slash, "process_urls" => $process_urls, "process_email" => $process_email, "name_for_v" => $name_for_v, "keep_paragraphs" => $keep_paragraphs, "vertical_output" => $vertical_output, "triple_vowels_to_double" => $triple_vowels_to_double, "kill_common_words" => $kill_common_words, "upper_case" => $upper_case);
+our %_VAL_AFTER_CLI = ("debug" => $debug, "debug_syllab_sub" => $debug_syllab_sub, "debug_to_logfile" => $debug_to_logfile, "silent_mode" => $silent_mode, "batch_mode" => $batch_mode, "corpus_running_text" => $corpus_running_text, "syllable_list" => $syllable_list, "mfa_format" => $mfa_format, "phonword_format" => $phonword_format, "vrt_format" => $vrt_format, "output_PHON" => $output_PHON, "output_CV" => $output_CV, "output_CVG" => $output_CVG, "output_CVNLRG" => $output_CVNLRG, "output_manner" => $output_manner, "output_place" => $output_place, "voicing" => $voicing, "multichars" => $multichars, "tr_is_group" => $tr_is_group, "ch_dzh_retracted" => $ch_dzh_retracted, "use_ligatures" => $use_ligatures, "use_one_char_ch_symbol" => $use_one_char_ch_symbol, "ye_phoneme_is_fricative" => $ye_phoneme_is_fricative, "ye_phoneme_is_affricate" => $ye_phoneme_is_affricate, "use_one_char_ye_symbol" => $use_one_char_ye_symbol, "use_dental_diacr" => $use_dental_diacr, "add_epenthetic_g" => $add_epenthetic_g, "glides_with_diacritics" => $glides_with_diacritics, "non_syl_u_with_u_diacr" => $non_syl_u_with_u_diacr, "non_syl_i_with_i_diacr" => $non_syl_i_with_i_diacr, "ch_is_single_char" => $ch_is_single_char, "ch_is_retracted_with_ligature" => $ch_is_retracted_with_ligature, "ch_is_retracted_no_ligature" => $ch_is_retracted_no_ligature, "ch_not_retracted_with_ligature" => $ch_not_retracted_with_ligature, "ch_not_retracted_no_ligature" => $ch_not_retracted_no_ligature, "space_between_phonemes" => $space_between_phonemes, "word_plus_phonemes" => $word_plus_phonemes, "stress_using_tildes" => $stress_using_tildes, "no_stress_marks" => $no_stress_marks, "non_ipa_apostrophes" => $non_ipa_apostrophes, "narrow_transcription" => $narrow_transcription, "insert_syllable_dots" => $insert_syllable_dots, "split_at_syllables" => $split_at_syllables, "syllabify_by_sentence" => $syllabify_by_sentence, "syllable_dots_are_spaces" => $syllable_dots_are_spaces, "ipa_pause_symbols" => $ipa_pause_symbols, "ipa_long_pause_two_singles" => $ipa_long_pause_two_singles, "add_comma_pauses" => $add_comma_pauses, "add_colon_pauses" => $add_colon_pauses, "add_semicolon_pauses" => $add_semicolon_pauses, "add_sentence_breaks" => $add_sentence_breaks, "add_paragraph_breaks" => $add_paragraph_breaks, "add_ellipsis_pauses" => $add_ellipsis_pauses, "add_bracket_pauses" => $add_bracket_pauses, "add_paren_pauses" => $add_paren_pauses, "numerals_to_words" => $numerals_to_words, "num_symbol" => $num_symbol, "decimal_symbol" => $decimal_symbol, "narrow_year_ranges" => $narrow_year_ranges, "broad_year_ranges" => $broad_year_ranges, "bc_dates_included" => $bc_dates_included, "all_year_ranges" => $all_year_ranges, "times_with_colon" => $times_with_colon, "fix_umlauts" => $fix_umlauts, "fix_grave_accents" => $fix_grave_accents, "fix_circumflexes" => $fix_circumflexes, "fix_nasal_tildes" => $fix_nasal_tildes, "normalize_nfc_input" => $normalize_nfc_input, "moneda" => $moneda, "rut_k_mode" => $rut_k_mode, "slash" => $slash, "process_urls" => $process_urls, "process_email" => $process_email, "name_for_v" => $name_for_v, "keep_paragraphs" => $keep_paragraphs, "vertical_output" => $vertical_output, "triple_vowels_to_double" => $triple_vowels_to_double, "kill_common_words" => $kill_common_words, "upper_case" => $upper_case);
 
 ############################################################################
 #        PROCESS THE CONFIGURATION FILE (perkins.ini) IF IT EXISTS         #
@@ -6016,6 +6032,7 @@ if ( $use_config_file == 1 ) {
                narrow_year_ranges broad_year_ranges bc_dates_included all_year_ranges
                times_with_colon
                fix_umlauts fix_grave_accents fix_circumflexes fix_nasal_tildes
+               normalize_nfc_input
                moneda rut_k_mode slash process_urls process_email name_for_v
                keep_paragraphs vertical_output triple_vowels_to_double
                kill_common_words upper_case
@@ -6266,6 +6283,14 @@ while (<INPUTFILE>) {
      # resulting piece. See the -mfa output block below for how this is used.  #
      ############################################################################
      my $mfa_original_line = $_;
+
+     ############################################################################
+     # UNICODE NFC INPUT (2.0.42): an accent written as a separate combining   #
+     # character (a + U+0301) becomes the one character every rule expects    #
+     # (á). Text already in NFC is unchanged. -nonfc turns it off. Not in      #
+     # -mfa, whose dictionary headwords stay exactly as written.               #
+     ############################################################################
+     $_ = Unicode::Normalize::NFC($_) if $normalize_nfc_input == 1 && $mfa_format != 1;
 
      ############################################################################
      # TOKEN MODE (--tokens): one input line = one sentence whose              #
@@ -7204,6 +7229,8 @@ sub print_help {
           print STDOUT "\n " . color_flags("-epc") . "                          Eliminar palabras comunes (para fines de testeo).";
           print STDOUT "\n " . color_flags("-tvd") . "                          Reducir 3 o más vocales idénticas seguidas a 2 (ej.:";
           print STDOUT "\n                               \"nooo\" -> \"noo\"). Activado por defecto.";
+          print STDOUT "\n " . color_flags("-nonfc") . "                        NO normalizar el input a Unicode NFC (por defecto, un";
+          print STDOUT "\n                               acento escrito aparte, a + U+0301, se une a su vocal: á).";
           print STDOUT "\n";
           print STDOUT "\nNOTA: A la mayoría de las opciones que no toman un argumento (es decir, las opciones";
           print STDOUT "\n      binarias), se les puede agregar \"no\" entre el guión y la opción misma para";
@@ -7392,6 +7419,8 @@ sub print_help {
           print STDOUT "\n " . color_flags("-kc") . "                           Eliminate common words (for testing purposes).";
           print STDOUT "\n " . color_flags("-tvd") . "                          Reduce 3+ identical consecutive vowels down to 2";
           print STDOUT "\n                               (e.g. \"nooo\" -> \"noo\"). On by default.";
+          print STDOUT "\n " . color_flags("-nonfc") . "                        DON'T normalize the input to Unicode NFC (by default an";
+          print STDOUT "\n                               accent written apart, a + U+0301, joins its vowel: á).";
           print STDOUT "\n";
           print STDOUT "\nNOTE: Most options that don't take an argument (i.e. binary options) can be reversed or negated by adding";
           print STDOUT "\n      \"no\" between the dash and the option itself (e.g. --nomulti, --nodebug, -notr, -nod).";
@@ -8448,6 +8477,7 @@ DEBUG CLI: \$fix_umlauts               =    $fix_umlauts
 DEBUG CLI: \$fix_grave_accents         =    $fix_grave_accents
 DEBUG CLI: \$fix_circumflexes          =    $fix_circumflexes
 DEBUG CLI: \$fix_nasal_tildes          =    $fix_nasal_tildes
+DEBUG CLI: \$normalize_nfc_input       =    $normalize_nfc_input
 
 DEBUG CLI: USER OPTIONS - SUBSTITUTIONS
 DEBUG CLI: \$moneda                    =    $moneda
@@ -9246,7 +9276,8 @@ sub print_console_greeting {
                'Fix circumflexes', 'fix_circumflexes', $fix_circumflexes );
           row3( $LC,
                'Fix nasal tildes', 'fix_nasal_tildes', $fix_nasal_tildes,
-               '','' ,                '','' );
+               'NFC input', 'normalize_nfc_input', $normalize_nfc_input,
+               '','' );
           print STDOUT "\n$div";
 
           sect( 'SUBSTITUTIONS & MISC', $div );
@@ -12855,9 +12886,12 @@ sub fix_odd_characters {
      }
 
      # A Mapudungun ng at the start of a word, before a vowel, is g, and gu
-     # before e and i (decided 261112). No Spanish word begins with ng.
-     $current_item =~ s/(?<![\p{L}\p{M}\p{N}'’_-])([nN])([gG])(?=[eiéíEIÉÍ])/($1 eq 'N' ? 'G' : 'g') . 'u'/ge;
-     $current_item =~ s/(?<![\p{L}\p{M}\p{N}'’_-])[nN]([gG])(?=[aouáóúAOUÁÓÚ])(?!uyen)/$1/g;
+     # before e and i (decided 261112). No Spanish word begins with ng. A
+     # replacement character (U+FFFD: a character lost before the text
+     # reached Perkins) is part of the word, so its ng is not word-initial
+     # (2.0.42: "\x{FFFD}ngeles", a lost á, lost its n).
+     $current_item =~ s/(?<![\p{L}\p{M}\p{N}\x{FFFD}'’_-])([nN])([gG])(?=[eiéíEIÉÍ])/($1 eq 'N' ? 'G' : 'g') . 'u'/ge;
+     $current_item =~ s/(?<![\p{L}\p{M}\p{N}\x{FFFD}'’_-])[nN]([gG])(?=[aouáóúAOUÁÓÚ])(?!uyen)/$1/g;
 
      # GRAVE ACCENTS > ACUTE ACCENTS (USING GRAVES IS A PRETTY COMMON TYPING MISTAKE)
      if ( $fix_grave_accents == 1 ) {

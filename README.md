@@ -1,6 +1,6 @@
 # Perkins
 
-![version](https://img.shields.io/badge/version-2.0.41-1f6feb?style=flat-square)
+![version](https://img.shields.io/badge/version-2.0.42-1f6feb?style=flat-square)
 ![licence](https://img.shields.io/badge/licence-AGPL--3.0-2da44e?style=flat-square)
 ![platforms](https://img.shields.io/badge/runs%20on-Linux%20%7C%20Windows%20%7C%20macOS-8250df?style=flat-square)
 ![processors](https://img.shields.io/badge/processors-x86--64%20%7C%20ARM64-0969da?style=flat-square)
@@ -11,7 +11,7 @@ Perkins turns Spanish orthographic text into phonemic or semi-narrow transcripti
 
 Author: Scott Sadowsky (http://sadowsky.cl). Licence: GNU Affero General Public License, version 3 (`LICENSE.md`).
 
-Every example on this page was produced by Perkins 2.0.41 itself.
+Every example on this page was produced by Perkins 2.0.42 itself.
 
 This is essentially an entirely new program with regard to Perkins 1.0.x. Binaries for Linux, Windows and macOS on Intel and ARM processors, and .deb, .rpm and Arch Linux packages are all built and tested by GitHub. The source code is the original Perl script.
 
@@ -35,15 +35,15 @@ This is essentially an entirely new program with regard to Perkins 1.0.x. Binari
 
 ## Download and installation
 
-Ready-built binaries and Linux packages are attached to each release on the [Releases page](https://github.com/Linguista/Perkins/releases). None of them needs Perl. For version 2.0.41:
+Ready-built binaries and Linux packages are attached to each release on the [Releases page](https://github.com/Linguista/Perkins/releases). None of them needs Perl. For version 2.0.42:
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.41-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.41-1_amd64.deb` |
-| `perkins-2.0.41-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.41-1.x86_64.rpm` |
-| `perkins-2.0.41-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.41-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.41-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.41-1_arm64.deb` |
-| `perkins-2.0.41-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.41-1.aarch64.rpm` |
+| `perkins_2.0.42-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.42-1_amd64.deb` |
+| `perkins-2.0.42-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.42-1.x86_64.rpm` |
+| `perkins-2.0.42-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.42-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.42-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.42-1_arm64.deb` |
+| `perkins-2.0.42-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.42-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | see below |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | see below |
 | `perkins-windows-x86_64.exe` | Windows (also Windows on ARM, which runs it through its emulation) | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -71,7 +71,7 @@ perkins -i=input.txt -o=output.txt -nt -st
 
 | Rule | |
 |---|---|
-| Input | plain text, **UTF-8**, given with `-i=` |
+| Input | plain text, **UTF-8**, given with `-i=`; normalized to Unicode NFC as it is read (`-nonfc` turns this off) |
 | Output | the file given with `-o=`, which may not be the input file; without it, a name made from the input's name and the mode (`input.PHNM.txt`, `input.MFA.dict`, `input.PHONWORD`, `input.vrt`) |
 | Options | `-x` and `--x` are the same; their order does not matter; there is no limit to how many are used |
 | Turning an option off | put `no` after the dash: `-nomc`, `-nocmp`, `-nosd` |
@@ -83,6 +83,8 @@ perkins -i=input.txt -o=output.txt -nt -st
 
 > [!IMPORTANT]
 > Every file Perkins writes is Unicode NFC, so a nasal vowel such as ã is one character. The one exception is an MFA dictionary (`-mfa`), which spells every phone exactly as the acoustic model does.
+>
+> Perkins also reads its input as NFC: an accent written as a separate combining character (a followed by U+0301, as text copied from macOS, some PDFs and some web pages has it) is joined to its vowel before anything else, so á is read as á. Text already in NFC is unchanged. `-nonfc` turns this off; `-mfa` never does it, so its headwords stay exactly as written. A replacement character (�, U+FFFD) marks a character lost before the text reached Perkins, and no normalization can restore it.
 
 ## The example sentence
 
@@ -362,6 +364,7 @@ The same list, in English or Spanish, is shown by `perkins -h` (`perkins -h -es`
 | `-sm`, `--silent-mode` | print nothing, not even errors, and write no log |
 | `-l=en`, `-l=es`, `-en`, `-es` | messages in English or Spanish |
 | `-d`, `--debug` / `-dl`, `--debug-log` | show debugging information / save it to a `.log` file |
+| `-nonfc` | do not normalize the input to Unicode NFC (normalized by default; never in `-mfa`) |
 
 ### Ready-made settings
 
@@ -496,7 +499,7 @@ When a release is published here, GitHub builds the five binaries and tests each
 ## Known problems
 
 > [!WARNING]
-> These are known and not yet fixed in 2.0.41:
+> These are known and not yet fixed in 2.0.42:
 >
 > - A single letter with a period is read as the letter's name, before anything else: p. m. and a. m. are pe eme and a eme, and i. e. is i e. EE. UU. is e ‖ u u.
 > - The period of an abbreviation is never a sentence end, even when it ends one: Vino el Sr. Luego se fue has no pause after se.ˈɲoɾ.

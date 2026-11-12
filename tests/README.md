@@ -4,7 +4,7 @@ Documents `run-test.sh` 1.10.0 and the files beside it.
 
 ## Purpose
 
-Checks that a Perkins build prints exactly what Perkins 2.0.35 printed on 261110, with the changes of 2.0.38, 2.0.39, 2.0.40 and 2.0.41 (see below), for:
+Checks that a Perkins build prints exactly what Perkins 2.0.35 printed on 261110, with the changes of 2.0.38, 2.0.39, 2.0.40, 2.0.41 and 2.0.42 (see below), for:
 
 - the test sentence approved on 261030 (`sentence.txt`), phonemic and narrow; its comma is now the short pause |, which is the only difference from the approved line;
 - a TAB-separated token file (`tokens.tok`) in token mode, once for each of the seven COSCACH CoNLL columns: phonemic and narrow, each with syllable dots and the stress mark and each with no syllabification and an accented vowel; manner, place and voicing.
@@ -34,6 +34,8 @@ Checks that a Perkins build prints exactly what Perkins 2.0.35 printed on 261110
 - false starts (`falsestart.tok`, `falsestart.txt`), in token mode and in running text: a token without a vowel right before an ellipsis is read as its sounds (no s ... no logró: s; de ch ...: t͡ʃ; de q ...: k; pr ...: pɾ; cl...: kl; rr ...: r; ll ...: ʝ; h ...: nothing), also with `-nt`, `-csc` and `-f=MANNER`; the interjections keep their reading before an ellipsis (mmm ..., nn ..., sh ...); acronyms in capitals stay spelled (PS ..., LGB ...); and with no ellipsis after them s is still ˈe.se and ch the interjection t͡ʃʃ̩ː.
 
 - the readings of 2.0.41 (`round9.tok`, `round9.txt`), in token mode with each of the six COSCACH CoNLL columns that take a transcription and in running text, phonemic and with the options of the utter-phnm tier of the COSCACH TextGrids (`-mc -dd -sd -ip -nost`): ts as the affricate t͡s (tsunami, Tsunamis; ʦ is A, A and A in manner, place and voicing, ts with `-csc`); ü as u (küni, kütral, mürque, glüh, Müller) but in güe and güi (pingüino, agüita, güera; güata reads ɡwa); a Mapudungun initial ng as g, gu before e and i (ngenechén, Ngenechén, nguillatún), Nguyen left alone; the built-in readings Bryan, Ryan, Schlyer, Django, nocauts, APK, CPU and the Mapudungun words; grr (in any case) ɡr̩ː, brr br̩ː, brbrbr br̩.br̩.br̩, which keep their reading before an ellipsis; the ch of fch, tsh and pch written t͡ʃ, as every ch.
+
+- decomposed input (`nfc.txt`, `nfc.tok`, both deliberately not NFC: their accents and the tilde of ñ are separate combining characters): read as NFC, triángulo, canción, piña and nguillatún give what their NFC spelling gives, in running text and in token mode; with `-nonfc` the old misreadings (t̪ɾján.ˈɡu.lo, piña) show that the switch works; and a replacement character before ng (�ngeles) does not make the ng word-initial. Keep the two files as they are: an editor that saves them as NFC makes the tests pointless.
 
 - ellipses and sentence ends (`ellipsis.txt`, `ellipsis.tok`): … and ... and ?... are the long pause, and are deleted with `-noelp`, also with `-nopi` and in token mode (where voy after titular then lenites to voj); a full stop, ? and ! are deleted with `-nosnp`.
 
@@ -122,9 +124,11 @@ When a new version changes an output on purpose, check the new output by eye, re
 
 2.0.38 changed `tokens-place` (a vowel is - instead of V, the letter of a velar) and added the fourteen tests from `lists-words` to `ellipsis-tokens-noelp`; their expected files are what 2.0.38 printed on 261111, checked by eye. Each records a fix: the lists used to be written on one line, -vrt syllabified kon.sep.si.ón, consecutive lines were glued with -noppp, -phonword wrote lower case and a ## line, the abbreviations were spelled out (esr ‖ ˈpe.ɾes), and -noelp and -nosnp did nothing.
 
-2.0.39 changed `tokens-place` and `lists-place` (a vowel is f, c or b by its place instead of -) and added the six tests from `nasal-tokens-narrow` to `decimals-phonemic`; their expected files are what 2.0.39 printed on 261111, checked by eye. Each records a fix: b, d and ɡ lenited after mm (m̩ː ˈvwẽ.nõ), the h of hmm was written H in the categories, and in running text 3,5. wrote an internal placeholder, 3,5, lost its coma, 1.500. was uno quinientos and 2.000, dos cero.
+2.0.39 changed `tokens-place` and `lists-place` (a vowel is f, c or b by its place instead of -) and added the six tests from `nasal-tokens-narrow` to `decimals-phonemic`; their expected files are what 2.0.39 printed on 261111, checked by eye. Each records a fix: b, d and ɡ lenited after mm (m̩ː ˈvwẽ.nõ), the h of hmm was written H in the categories, and in running text 3,5. wrote an internal placeholder, 3,5, lost its comma, 1.500. was uno quinientos and 2.000, dos cero.
 
 2.0.40 changed no earlier expected file and added the eleven tests from `interjections-tokens` to `falsestart-narrow`; their expected files are what 2.0.40 printed on 261111, checked by eye. 2.0.39 fails all eleven, each for a fix: mmmmm was mmm, hmmm mm, mhm mm, mjm mxm, shh t͡ʃ and SH the letters e.se.ˈa.t͡ʃe; mmhm with `-csc` had the IPA mark (m̩ ˈhm̩); sh and ch had Ʃ, the capital of ʃ, in the categories; and every false start was read as letter names (s ˈe.se, pr pe.ˈe.re, cl se ˈe.le).
+
+2.0.42 changed no earlier expected file and added the three tests `nfc-phonemic`, `nfc-off` and `nfc-tokens`; their expected files are what 2.0.42 printed on 261112, checked against what 2.0.41 prints for the same words in NFC. 2.0.41 fails `nfc-phonemic` and `nfc-tokens` (it misread the decomposed words and made �ngeles ˈɡe.les).
 
 ## Platform
 

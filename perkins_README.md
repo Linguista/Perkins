@@ -1,6 +1,6 @@
 # perkins_README.md
 
-Documents Perkins 2.0.41, the Spanish phonological transcriber (Scott Sadowsky, GNU AGPL v3).
+Documents Perkins 2.0.42, the Spanish phonological transcriber (Scott Sadowsky, GNU AGPL v3).
 
 The source, the binaries for Linux, Windows and macOS and the Linux packages are at https://github.com/Linguista/Perkins, whose main page also shows every option with examples.
 
@@ -36,6 +36,8 @@ A number before a noun agrees with it in gender: 1 perro un perro, 1 casa una ca
 ### Unicode
 
 Every output file is NFC, so a nasal vowel is one character (ã ẽ ĩ õ ũ); a diacritic with no precomposed form stays a combining mark (d̪, ɣ̞, n̪), which is already NFC. The one exception is `-mfa`: an MFA dictionary spells every phone exactly as the acoustic model does, and the models in use spell the nasal vowels as the vowel plus U+0303, so `-mfa` keeps them that way.
+
+The input is read as NFC (since 2.0.42): an accent written as a separate combining character (a + U+0301) is joined to its vowel before any rule runs, because every rule expects the precomposed letter. Decomposed triángulo, canción and piña were t̪ɾján.ˈɡu.lo, kan.ˈsjón and piña; they are now ˈt̪ɾjan.ɡu.lo, kan.ˈsjon and ˈpi.ɲa, as their NFC spelling gives. Text already in NFC, the COSCACH and CODICACH texts among it, is unchanged. `-nonfc`, or `normalize_nfc_input = 0` in `perkins.ini`, turns it off; `-mfa` never normalizes its input, so its dictionary headwords stay exactly as written. A replacement character (U+FFFD) is a character lost before the text reached Perkins: NFC cannot restore it, and inside a word it does not make the rest a new word (the Mapudungun ng rule leaves "�ngeles" alone).
 
 ### Token mode (`--tokens`, `-tok`)
 
@@ -113,11 +115,11 @@ Ready-built binaries and packages are attached to each release on the Releases p
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.41-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.41-1_amd64.deb` |
-| `perkins-2.0.41-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.41-1.x86_64.rpm` |
-| `perkins-2.0.41-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.41-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.41-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.41-1_arm64.deb` |
-| `perkins-2.0.41-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.41-1.aarch64.rpm` |
+| `perkins_2.0.42-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.42-1_amd64.deb` |
+| `perkins-2.0.42-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.42-1.x86_64.rpm` |
+| `perkins-2.0.42-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.42-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.42-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.42-1_arm64.deb` |
+| `perkins-2.0.42-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.42-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | as described below the table |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | as described below the table |
 | `perkins-windows-x86_64.exe` | Windows (also Windows on ARM, which runs it through its emulation) | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -133,7 +135,7 @@ pp -M Roman -M Lingua::ES::Numeros -o perkins perkins.pl
 ./perkins -h 2>&1 | grep -m1 'Perkins v'
 ```
 
-It must print `Perkins v2.0.41`.
+It must print `Perkins v2.0.42`.
 
 ## Checking a build
 
@@ -164,9 +166,10 @@ It prints ok or FAIL for each test, with the differences, and ALL TESTS PASSED a
 
 ## Version history
 
+- **2.0.42** (2026-11-12): the input is normalized to Unicode NFC before anything else, so an accent written as a separate combining character is read as part of its vowel (decomposed triángulo ˈt̪ɾjan.ɡu.lo, canción kan.ˈsjon, piña ˈpi.ɲa; they were t̪ɾján.ˈɡu.lo, kan.ˈsjón, piña); on by default, `-nonfc` or `normalize_nfc_input = 0` turns it off, and `-mfa` never does it. A replacement character (U+FFFD) inside a word no longer makes the ng after it word-initial for the Mapudungun rule of 2.0.41 (�ngeles kept its n). 68 tests.
 - **2.0.41** (2026-11-12): ts is the affricate t͡s, one phoneme (tsunami t͡su.ˈna.mi; it was t̪.su.ˈna.mi), with its categories in every mode (ʦ in the single-character modes, ts with `-csc`); ü is u everywhere but in güe and güi (küni ˈku.ni, kütral ku.ˈt̪ɾal; they were k.wni, k.wt̪ɾal); a Mapudungun ng at the start of a word, before a vowel, is g, gu before e and i (ngenechén ɡe.ne.ˈt͡ʃen, nguillatún ɡi.ʝa.ˈt̪un), and ng inside a word is never touched; new built-in readings (Bryan ˈbɾa.ʝan, Ryan ˈra.ʝan, Schlyer ˈt͡ʃlaj.eɾ, Django ˈʝan.ɡo, nocauts no.ˈkawts, APK a.pe.ˈka, CPU se.pe.ˈu, glüh, nürr, pürrüm and eight Mapudungun words); grr is ɡr̩ː (long), brr br̩ː, brbrbr br̩.br̩.br̩, and brr and brbrbr keep their reading before an ellipsis; the ch of a built-in reading (fch, tsh, pch) is written as every other ch (t͡ʃ, tʃ with `-csc`; it was always ʧ); a grave ù is fixed to ú. 65 tests.
 - **2.0.40** (2026-11-11): a false start (a token without a vowel right before an ellipsis) is read as its sounds: s ... is s, pr ... pɾ, ch ... t͡ʃ (it was read as letter names: s ˈe.se, pr pe.ˈe.re, cl se ˈe.le); mmm, hmm, mmhm and sh are recognized by their shape in any spelling and case (mmmmm was mmm, hmmm mm, mhm mm, mjm mxm, shh t͡ʃ, SH the letters); ʃ (sh, ch) has its categories, F, T and A (it was written Ʃ); with an accent for stress, the stressed syllabic m of mmhm takes the accent (m̩ hḿ̩; it kept ˈ).
-- **2.0.39** (2026-11-11): `-f=PLACE` writes a vowel by its place, in lower case: f front (i, e), c central (a), b back (o, u) (it was -); with `--narrow`, b, d and ɡ keep their stop after the syllabic nasal of mm, mmm and hmm (mm bueno m̩ː ˈbwẽ.nõ; they were lenited); the h of hmm and mmhm is F in manner, G (glottal) in place, A in voicing and C in the CV categories (it was written as H); in running text a decimal or a number with thousands separators before a full stop or a comma is read whole (3,5. gave an internal placeholder, 3,5, lost its coma, 1.500. was uno quinientos, 2.000, dos cero).
+- **2.0.39** (2026-11-11): `-f=PLACE` writes a vowel by its place, in lower case: f front (i, e), c central (a), b back (o, u) (it was -); with `--narrow`, b, d and ɡ keep their stop after the syllabic nasal of mm, mmm and hmm (mm bueno m̩ː ˈbwẽ.nõ; they were lenited); the h of hmm and mmhm is F in manner, G (glottal) in place, A in voicing and C in the CV categories (it was written as H); in running text a decimal or a number with thousands separators before a full stop or a comma is read whole (3,5. gave an internal placeholder, 3,5, lost its comma, 1.500. was uno quinientos, 2.000, dos cero).
 - **2.0.38** (2026-11-11): `-owl`, `-sas` and the new `-osl` and `-usl` write one word or syllable per line, without pauses (they wrote one line, words run together); syllable lists cut from running text or, with `-nosbu`, from each word; `-vrt` is a word list with its own settings, through the ordinary pipeline (its old pipeline for Connexor VRT files gave kon.sep.si.ón), and an input ending in .vrt no longer selects it; every input line keeps its own output line (with `-noppp` they were glued together); `-noelp` and `-nosnp` work; the period of an abbreviation is not a sentence end (Sr. Pérez was esr ‖ ˈpe.ɾes); `-f=PLACE` writes a vowel as -, not V; `-phonword` keeps capital letters and writes no line for a full stop; the output file may not be the input file; `perkins -u` shows real output, with the voicing key corrected (S voiced, A voiceless).
 - **2.0.37** (2026-11-10): no change in output. Comments and documents no longer name files, folders and projects that are not part of Perkins; the help banner names the licence file as `LICENSE.md`; every option with real examples on the main page of the repository (`README.md`); binaries for Linux and macOS on both Intel and ARM processors, and `.deb` and `.rpm` packages for ARM; the GitHub build checks the repository for private information before building.
 - **2.0.36** (2026-11-10): no change in output. Comments and documents reworded, version numbers taken out of the comments outside the changelog, the error for the old -g2p option no longer names a version; the source published at https://github.com/Linguista/Perkins, where GitHub builds and tests binaries for Linux, Windows and macOS; the tests ignore line endings, so they also run on Windows.

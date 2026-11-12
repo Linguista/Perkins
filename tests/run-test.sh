@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION 1.10.0
+# VERSION 1.11.0
 #
 # run-test.sh -- checks a Perkins build against the expected outputs in this
 # folder. Usage: ./run-test.sh [PERKINS_COMMAND]
@@ -98,6 +98,9 @@ check round9-tokens-place round9.tok  expected/round9-tokens-place.txt -tok -f=P
 check round9-tokens-voicing round9.tok expected/round9-tokens-voicing.txt -tok -f=V
 check round9-phonemic    round9.txt   expected/round9-phonemic.txt   -nosbu
 check round9-utter-phnm  round9.txt   expected/round9-utter-phnm.txt -mc -dd -sd -ip -nost
+check nfc-phonemic      nfc.txt      expected/nfc-phonemic.txt      -nosbu
+check nfc-off           nfc.txt      expected/nfc-off.txt           -nosbu -nonfc
+check nfc-tokens        nfc.tok      expected/nfc-tokens.txt        -tok
 
 if [ "$fail" -eq 0 ]; then echo "ALL TESTS PASSED"; else echo "SOME TESTS FAILED"; fi
 exit "$fail"

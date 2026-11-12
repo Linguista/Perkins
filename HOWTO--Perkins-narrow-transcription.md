@@ -5,7 +5,9 @@ Sequential steps, numbered with gaps (10, 20, 30…) for later insertion.
 ---
 
 > **Currency check (261112).** This document is current as of Perkins
-> **v2.0.41**, which changed no narrow rule but changed what the rules see:
+> **v2.0.42**, which changed no narrow rule; its input is read as Unicode
+> NFC, so a decomposed accent reaches the rules as one letter.
+> **v2.0.41** changed no narrow rule but changed what the rules see:
 > ts is the affricate t͡s (tsunami t͡sũ.ˈnã.mĩ), ü is u but in güe and güi
 > (küni ˈkũ.nĩ), and a Mapudungun ng at the start of a word is g, so the
 > rules see ɡ (ngenechén ɟẽ.nẽ.ˈt͡ʃẽɲ, where n was a syllable of its own).
@@ -72,7 +74,7 @@ Confirm the version:
 perkins -h 2>&1 | grep -m1 'Perkins v'
 ```
 
-It must show `Perkins v2.0.41` (or later). 2.0.33 added built-in phrase readings; 2.0.34 made an ellipsis token a pause in token mode; 2.0.35 made the comma a pause in running text and fixed syllable breaks and the -uir hiatus; 2.0.36 and 2.0.37 changed no output; 2.0.38 rebuilt the lists and stopped the period of an abbreviation from being a pause. None of them changed a narrow rule; 2.0.39 made the syllabic nasal of mm a nasal for the lenition rules; 2.0.40 changed no rule, and reads false starts as their sounds. 2.0.41 changed no rule, and reads ts as t͡s, ü as u and a Mapudungun initial ng as g. An older number means the binary was not
+It must show `Perkins v2.0.42` (or later). 2.0.33 added built-in phrase readings; 2.0.34 made an ellipsis token a pause in token mode; 2.0.35 made the comma a pause in running text and fixed syllable breaks and the -uir hiatus; 2.0.36 and 2.0.37 changed no output; 2.0.38 rebuilt the lists and stopped the period of an abbreviation from being a pause. None of them changed a narrow rule; 2.0.39 made the syllabic nasal of mm a nasal for the lenition rules; 2.0.40 changed no rule, and reads false starts as their sounds. 2.0.41 changed no rule, and reads ts as t͡s, ü as u and a Mapudungun initial ng as g. An older number means the binary was not
 recompiled: editing the `.pl` alone does not change it.
 
 ---
