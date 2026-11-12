@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VERSION 1.7.0
+# VERSION 1.10.0
 #
 # run-test.sh -- checks a Perkins build against the expected outputs in this
 # folder. Usage: ./run-test.sh [PERKINS_COMMAND]
@@ -73,6 +73,31 @@ check ellipsis-noelp     ellipsis.txt expected/ellipsis-noelp.txt     -nosbu -no
 check ellipsis-nosnp     ellipsis.txt expected/ellipsis-nosnp.txt     -nosbu -nosnp
 check ellipsis-nopi-noelp ellipsis.txt expected/ellipsis-nopi-noelp.txt -nosbu -nopi -noelp
 check ellipsis-tokens-noelp ellipsis.tok expected/ellipsis-tokens-noelp.txt -tok -nt -noelp
+check nasal-tokens-narrow nasal.tok  expected/nasal-tokens-narrow.txt -tok -nt
+check nasal-narrow       nasal.txt    expected/nasal-narrow.txt       -nosbu -nt
+check nasal-tokens-manner nasal.tok   expected/nasal-tokens-manner.txt -tok -f=MANNER
+check nasal-tokens-place nasal.tok    expected/nasal-tokens-place.txt -tok -f=PLACE
+check nasal-tokens-voicing nasal.tok  expected/nasal-tokens-voicing.txt -tok -f=V
+check decimals-phonemic  decimals.txt expected/decimals-phonemic.txt  -nosbu
+check interjections-tokens interjections.tok expected/interjections-tokens.txt -tok
+check interjections-tokens-csc interjections.tok expected/interjections-tokens-csc.txt -tok -csc
+check interjections-tokens-manner interjections.tok expected/interjections-tokens-manner.txt -tok -f=MANNER
+check interjections-tokens-place interjections.tok expected/interjections-tokens-place.txt -tok -f=PLACE
+check interjections-tokens-voicing interjections.tok expected/interjections-tokens-voicing.txt -tok -f=V
+check falsestart-tokens  falsestart.tok expected/falsestart-tokens.txt -tok
+check falsestart-tokens-narrow falsestart.tok expected/falsestart-tokens-narrow.txt -tok -nt
+check falsestart-tokens-csc falsestart.tok expected/falsestart-tokens-csc.txt -tok -csc
+check falsestart-tokens-manner falsestart.tok expected/falsestart-tokens-manner.txt -tok -f=MANNER
+check falsestart-phonemic falsestart.txt expected/falsestart-phonemic.txt -nosbu
+check falsestart-narrow  falsestart.txt expected/falsestart-narrow.txt -nosbu -nt
+check round9-tokens      round9.tok   expected/round9-tokens.txt     -tok
+check round9-tokens-narrow round9.tok expected/round9-tokens-narrow.txt -tok -nt
+check round9-tokens-csc  round9.tok   expected/round9-tokens-csc.txt -tok -csc
+check round9-tokens-manner round9.tok expected/round9-tokens-manner.txt -tok -f=MANNER
+check round9-tokens-place round9.tok  expected/round9-tokens-place.txt -tok -f=PLACE
+check round9-tokens-voicing round9.tok expected/round9-tokens-voicing.txt -tok -f=V
+check round9-phonemic    round9.txt   expected/round9-phonemic.txt   -nosbu
+check round9-utter-phnm  round9.txt   expected/round9-utter-phnm.txt -mc -dd -sd -ip -nost
 
 if [ "$fail" -eq 0 ]; then echo "ALL TESTS PASSED"; else echo "SOME TESTS FAILED"; fi
 exit "$fail"

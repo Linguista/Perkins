@@ -114,7 +114,7 @@ for `d̪` also after `l`. A continuant everywhere else:
 | Position | `b` | `d̪` | `ɡ` | Examples |
 |---|---|---|---|---|
 | after a pause, or at the start | `b` | `d̪` | `ɡ` | Desde `ˈd̪es…` |
-| after a nasal | `b` | `d̪` | `ɡ` | tenga `ˈt̪ẽŋ.ɡa` (and rule 1: un beso `ũɱ.ˈve.so`) |
+| after a nasal, also the syllabic nasal of mm and hmm | `b` | `d̪` | `ɡ` | tenga `ˈt̪ẽŋ.ɡa`, mm bueno m̩ː ˈbwẽ.nõ (and rule 1: un beso `ũɱ.ˈve.so`) |
 | `d̪` after `l` | | `d̪` | | caldo `ˈkal.d̪o` |
 | coda (before a syllable or word boundary) | `v` | `ð̞` | `ɣ` | club, absoluto |
 | onset after a vowel or a glide | `ʋ` | `ð̞` | `ɣ̞` | lluvia `ˈʝu.ʋja`, agua `ˈa.ɣ̞wa`, padre `ˈpa.ð̞ɾe`, siglo `ˈsi.ɣ̞lo`, deuda `ˈð̞ew.ð̞a` |
@@ -131,10 +131,19 @@ $s =~ s/($VOC)($SEP)b/$1$2ʋ/g;
 $s =~ s/($VOC)($SEP)(?:d̪|d)/$1$2ð̞/g;
 $s =~ s/($VOC)($SEP)ɡ/$1$2ɣ̞/g;
 # 4. onset after any other consonant (a nasal, and l before d, keep the stop)
-$s =~ s{((?![. ˈˌ'\x01|‖])\X)($SEP)(d̪|d|b|ɡ)}{ _narrow_after_consonant($1, $2, $3) }ge;
+$s =~ s{((?![. ˈˌ'\x01|‖])\Xː?)($SEP)(d̪|d|b|ɡ)}{ _narrow_after_consonant($1, $2, $3) }ge;
 ```
 
 All three steps cross word boundaries and none crosses a pause.
+
+**v2.0.39.** In step 4 a length mark (ː) belongs to the segment before it.
+The backchannels mm and mmm are the syllabic nasal m̩ː (hmm is hm̩ː), and
+the length mark, a character of its own, was the "consonant" step 4 saw before the
+next word, so b, d and ɡ after them lenited as after any non-nasal
+consonant: mm bueno m̩ː ˈvwẽ.nõ, mmm dale m̩ː ˈð̞a.lẽ, mm gracias
+m̩ː ˈɣɾa.sjas. Now the nasal is seen and the stop stays: m̩ː ˈbwẽ.nõ,
+m̩ː ˈd̪a.lẽ, m̩ː ˈɡɾa.sjas. A vowel after m̩ː is not nasalized (rule 11
+needs the nasal right before the vowel, and that is kept).
 
 **What changed, and why.** Until v2.0.31 these were rules 2 to 7, and
 an onset `b`, `d̪` or `ɡ` lenited only BETWEEN TWO VOWELS, with the

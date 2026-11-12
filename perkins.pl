@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# VERSION 2.0.38
+# VERSION 2.0.41
 
 use strict;
 use warnings;
@@ -32,7 +32,7 @@ use Roman;                                      # Convert Roman numerals
 use Lingua::ES::Numeros;                        # Module to convert numerals to Spanish text.
 
 
-my $version = "2.0.38";
+my $version = "2.0.41";
 # Released 2026-11-11
 
 #######################################################################################
@@ -75,6 +75,88 @@ my $version = "2.0.38";
 #################################################################################
 
 # CHANGELOG VIS-A-VIS PERKINS 1.0.6
+#
+# v2.0.41 (2026-11-12)
+# - ts is an affricate, t͡s, one phoneme: tsunami t͡su.ˈna.mi, tsunamis
+#     t͡su.ˈna.mis (they were t̪.su.ˈna.mi, with a syllable without a vowel).
+#     Its categories: affricate (A) with -f=MANNER, alveolar (A) with
+#     -f=PLACE, voiceless (A) with -f=V, a consonant (C) with -cv, -cvg and
+#     -cvn; in the single-character modes it is ʦ, with -csc ts.
+# - ü is u everywhere but in güe and güi, where it is the Spanish diaeresis
+#     (decided 261112: Mapudungun and German ü alike, "as spoken in
+#     Spanish"): küni ˈku.ni, kütral ku.ˈt̪ɾal, mürque ˈmuɾ.ke (they were
+#     k.wni, k.wt̪ɾal, mw.ɾke). güe, güi, agüita and pingüino are unchanged;
+#     güa and güo read as before (gua, guo).
+# - A Mapudungun ng at the start of a word, before a vowel, is g (gu before
+#     e and i), as Spanish speakers say it (decided 261112): ngenechén
+#     ɡe.ne.ˈt͡ʃen, nguillatún ɡi.ʝa.ˈt̪un (they were n.xe.ne.ˈt͡ʃen,
+#     n.ɡi.ʝa.ˈt̪un). No Spanish word begins with ng; Nguyen is left alone.
+#     ng inside a word is never touched.
+# - New built-in readings (decided 261112): Bryan ˈbɾa.ʝan, Ryan ˈra.ʝan,
+#     Schlyer ˈt͡ʃlaj.eɾ, Django ˈʝan.ɡo, nocauts no.ˈkawts (the stress, which
+#     the final s moved to the first syllable), APK a.pe.ˈka, CPU se.pe.ˈu,
+#     glüh ɡlu, nürr nuɾ, pürrüm pu.ˈɾum, küla ku.ˈla, küllwi ˈkul.wi,
+#     küpalme ku.ˈpal.me, kürüf ku.ˈɾuf, küyen ku.ˈʝen, ngenechén and
+#     nguillatún as above.
+# - grr is ɡr̩ː (the trill syllabic and long; it was short), brr br̩ː, brbrbr
+#     br̩.br̩.br̩; brr and brbrbr keep their reading before an ellipsis, as
+#     grr does.
+# - The ch of a built-in reading (fch, pch, tsh, Schlyer) is written as every
+#     other ch in the run (t͡ʃ with -mc, tʃ with -csc). It was always ʧ.
+# - A grave ù is fixed to ú (the fix wrote ò as ú, and ù was left).
+#
+# v2.0.40 (2026-11-11)
+# - A false start is read as its sounds. A token without a vowel that comes
+#     right before an ellipsis ("s ...", "pr...", "ch ...") is a word cut
+#     off, not a letter or an acronym: s is s, l l, ch t͡ʃ, q k, pr pɾ, cl
+#     kl, ps ps, tr t̪ɾ, in running text and with --tokens alike. They were
+#     read as letter names (s ˈe.se, b be.ˈlaɾ.ɡa, v be.ˈkoɾ.t̪a, pr pe.ˈe.re,
+#     cl se ˈe.le). Where the letter does not give the sound: c and q k, g
+#     ɡ, j x, v b, z s, x ks, ll ʝ, r the trill at the start and after l, n
+#     or s and the tap after any other consonant, h nothing. Not a false
+#     start: a token of two or more capitals (an acronym: PS ..., LGB ...
+#     stay pe ˈe.se and the letters) and the interjections, which keep their
+#     own reading before an ellipsis (mmm ..., nn ..., sh ..., pf ...).
+# - The interjections are read by their shape, in any case: every run of
+#     three or more m (mmm, mmmmm, mmmmmmm) is m̩ː, h then m (hm, hmmm,
+#     hmmmm) is hm̩ː, m then h or j then m (mhm, mhmm, mmhmm, mmmhm, mjm,
+#     mm-hm) is m̩.ˈhm̩, and s then h (sh, shh, shhh, ssh, SH) is ʃ̩ː. Only the
+#     exact spellings of the built-in list had those readings: mmmmm was
+#     mmm, hmmm mm, mhm mm, mmmhm mmm, mjm mxm, shh t͡ʃ, ssh est͡ʃ, and SH
+#     was spelled e.se.ˈa.t͡ʃe. mm keeps its ordinary reading, m̩ː.
+# - ʃ, the sound of the interjections sh (ʃ̩ː) and ch (t͡ʃʃ̩ː), has its
+#     categories: a fricative (F) with -f=MANNER, postalveolar (T, as ch)
+#     with -f=PLACE, voiceless (A) with -f=V, and a consonant (C) with -cv,
+#     -cvg and -cvn. It belonged to none, so it was written as its capital,
+#     Ʃ, in every one of them.
+# - With the stress written as an accent (-st, -csc), a stressed syllable
+#     without a vowel takes the accent on its syllabic consonant: mmhm is
+#     m̩ hḿ̩ with -csc. The IPA stress mark was left before the syllable
+#     (m̩ ˈhm̩), even with -oa.
+#
+# v2.0.39 (2026-11-11)
+# - -f=PLACE writes a vowel by its place: f front (i, e), c central (a), b
+#     back (o, u), in lower case, so that it never looks like a consonant's
+#     place. It was "-" for every vowel.
+# - --narrow: b, d and g keep their stop after the syllabic nasal of mm, mmm
+#     and hmm (m̩ː), as after any nasal: mm bueno m̩ː ˈbwẽ.nõ, mmm dale
+#     m̩ː ˈd̪a.lẽ, mm gracias m̩ː ˈɡɾa.sjas. The length mark after the m hid
+#     the nasal from the rule, so they were lenited (ˈvwẽ.nõ, ˈð̞a.lẽ,
+#     ˈɣɾa.sjas). A vowel after m̩ː is still not nasalized.
+# - A decimal or a number with thousands separators before a full stop or a
+#     comma, in running text, is read whole. The digits after the separator
+#     were taken for a number of their own: "mide 3,5." wrote an internal
+#     placeholder into the transcription (t̪ɾes qq.t͡ʃoɾ.t̪paw.seqq.ˈsin.ko),
+#     "3,5," lost its coma (t̪ɾe.ˈsin.ko), "1.500." was uno quinientos with
+#     two pauses, "2.000," dos cero and "2.500,5," dos mil quinientos cinco.
+#     Now: t̪ɾes ˈko.ma ˈsin.ko ‖, t̪ɾes ˈko.ma ˈsin.ko |, mil ki.ˈnjen.t̪os ‖,
+#     d̪os mil |, d̪os mil ki.ˈnjen.t̪os ˈko.ma ˈsin.ko |. With --tokens the
+#     punctuation is a token of its own, and nothing changes.
+# - The h of the interjections hmm (hm̩ː) and mmhm (m̩.ˈhm̩) has a category:
+#     a fricative (F) with -f=MANNER, glottal (G, a new letter) with
+#     -f=PLACE, voiceless (A) with -f=V, and a consonant (C) with -cv, -cvg
+#     and -cvn. It belonged to none, so it was written as a capital H in
+#     every one of them (HN̩ː, HB̩ː, HS̩ː, HC̩ː).
 #
 # v2.0.38 (2026-11-11)
 # - -owl (word list) and -sas or -osl (syllable list) write one word or one
@@ -2004,7 +2086,6 @@ our %BUILTIN_RESPELL = (
      'SA' => 'eseá',
      'SCA' => 'eseseá',
      'SECOF' => 'secóf',
-     'SH' => 'eseáche',
      'SLR' => 'eseeleérre',
      'SM' => 'eseéme',
      'SMK' => 'eseemeká',
@@ -4746,18 +4827,39 @@ our %BUILTIN_RESPELL_ANYCASE = (
      'zootopia' => 'zotópia',
      'zudy' => 'súdi',
      'ülmen' => 'ulmén',
+     # decided 261112 (the COSCACH vowelless-syllable review)
+     'apk' => 'apeká',
+     'bryan' => 'bráyan',
+     'cpu' => 'sepeú',
+     'django' => 'yángo',
+     'glüh' => 'glu',
+     'küla' => 'kulá',
+     'küni' => 'kúni',
+     'küpalme' => 'kupálme',
+     'kürüf' => 'kurúf',
+     'kütral' => 'kutrál',
+     'küyen' => 'kuyén',
+     'mürque' => 'múrke',
+     'ngenechén' => 'guenechén',
+     'nguillatún' => 'guiyatún',
+     'nocauts' => 'nocáuts',
+     'nürr' => 'nur',
+     'pürrüm' => 'purúm',
+     'ryan' => 'ráyan',
 );
 our %BUILTIN_IPA = (
      'aylwin' => 'ˈejl.win',
      'bah' => 'baː',
      'bb' => 'ba',
+     'brbrbr' => 'br̩.br̩.br̩',
+     'brr' => 'br̩ː',
      'buh' => 'buː',
      'dr' => 'dɾ̩',
      'ehh' => 'eː',
      'ehhh' => 'eː',
      'fch' => 'fʧ̩',
      'fl' => 'fl̩',
-     'grr' => 'ɡr̩',
+     'grr' => 'ɡr̩ː',
      'hmm' => 'hm̩ː',
      'hn' => 'hn̩',
      'ih' => 'iː',
@@ -4777,6 +4879,7 @@ our %BUILTIN_IPA = (
      'revenge' => 're.ˈbenʝ',
      'prr' => 'pr̩',
      'rr' => 'r̩',
+     'schlyer' => 'ˈʧlaj.eɾ',
      'selj' => 'selʝ',
      'sh' => 'ʃ̩ː',
      'smm' => 'm̩ː',
@@ -4785,10 +4888,27 @@ our %BUILTIN_IPA = (
      'ts' => 'ts̩',
      'tsh' => 'ʧ̩',
      'tss' => 'ts̩ː',
+     'tsunami' => 'ʦu.ˈna.mi',
+     'tsunamis' => 'ʦu.ˈna.mis',
      'tz' => 'ts̩',
+     'küllwi' => 'ˈkul.wi',
 );
 our @BUILTIN_IPA_KEYS = sort keys %BUILTIN_IPA;
 our %BUILTIN_IPA_INDEX = map { $BUILTIN_IPA_KEYS[$_] => $_ } 0 .. $#BUILTIN_IPA_KEYS;
+# Interjections without a vowel that keep their reading before an ellipsis:
+# hums, hisses and growls, not cut-off words.
+our %HELD_INTERJECTIONS = map { $_ => 1 }
+     qw(mm mh mmh nn nnn hn sn smm pf pff pph ff ss ts tss tz tsh pch fch grr prr brr brbrbr jjj);
+
+# The sounds of the letters of a false start (see false_start_phonemes()).
+our %FALSE_START_SOUND = (
+     b => 'b', c => 'k', d => 'd', f => 'f', g => 'ɡ', h => '', j => 'x',
+     k => 'k', l => 'l', m => 'm', n => 'n', 'ñ' => 'ɲ', p => 'p', q => 'k',
+     s => 's', t => 't', v => 'b', w => 'w', x => 'ks', z => 's',
+);
+# The false starts met in this run, by placeholder number.
+our @FALSE_START_IPA;
+our %FALSE_START_INDEX;
 # @BUILTIN_PHRASES: multiword names read as one Spanish word. Each
 # entry is [ pattern, respelling ]; the pattern is matched without regard to
 # case, and its words may be separated by spaces, underscores (FreeLing
@@ -5094,9 +5214,13 @@ my $trills      = "(r)";
 my $taps        = "(ɾ)";
 # Includes v/ɣ/ç (plain fricatives from --narrow's spirantization
 # and velar-palatalization rules).
-my $fricatives  = "(f|s|x|ʝ|v|ɣ|ç)";
+# h is the glottal fricative of the interjections hmm (hm̩ː) and mmhm; ʃ
+# the postalveolar fricative of sh (ʃ̩ː) and ch (t͡ʃʃ̩ː). In the modes that
+# use these classes ch is the single character ʧ, so ʃ never matches part
+# of it.
+my $fricatives  = "(f|s|x|ʝ|v|ɣ|ç|h|ʃ)";
 my $laterals    = "(l)";
-my $affricates  = "(ʧ|ʤ)";
+my $affricates  = "(ʧ|ʤ|ʦ)";
 # Includes ʋ/ð̞/ɣ̞/ʝ̞ (the "lowered"-diacritic, approximant-quality
 # outputs of --narrow's intervocalic spirantization and palatalization
 # rules). MUST be checked in opt_convert_phonemes_manners() BEFORE
@@ -5122,8 +5246,8 @@ my $labiodentals  = "(f|v|ʋ|ɱ)";
 # confirmed as a real bug found during stress-testing (place mode was
 # showing "A̪" for a phoneme that should classify as dental "D").
 my $dentals       = "(d|t|ð̞|n̪)";
-my $alveolars     = "(n|ɾ|r|s|l)";
-my $postalveolars = "(ʧ|ʤ)";
+my $alveolars     = "(n|ɾ|r|s|l|ʦ)";
+my $postalveolars = "(ʧ|ʤ|ʃ)";
 # Includes ɟ/ç/ʝ̞/c (--narrow's palatalized-velar outputs).
 my $palatals      = "(j|ʝ|ɲ|ɟ|ç|ʝ̞|c)";
 # Includes ɣ/ɣ̞/ŋ (--narrow's velar-fricative outputs and velar
@@ -5133,10 +5257,16 @@ my $palatals      = "(j|ʝ|ɲ|ɟ|ç|ʝ̞|c)";
 # happens to match first.
 my $velars        = "(k|ɡ|x|ɣ|ɣ̞|ŋ)";
 my $labiovelars   = "(w)";
+# The h of hmm (hm̩ː) and mmhm.
+my $glottals      = "(h)";
+# Vowels, for the place output: front, central, back.
+my $front_vowels   = "(i|e|í|é)";
+my $central_vowels = "(a|á)";
+my $back_vowels    = "(o|u|ó|ú)";
 
 # The following are for the routine that replaces phonemes with VOICING
 my $voiced   = "(a|e|i|o|u|á|é|í|ó|ú|b|d|ɡ|ʤ|ʝ|j|l|m|ɲ|n|ɾ|r|w)";
-my $unvoiced = "(ʧ|f|k|p|s|ʂ|t|x)";
+my $unvoiced = "(ʧ|f|k|p|s|ʂ|t|x|h|ʃ|ʦ)";
 
 ############################################################################
 #                       DECLARE EMPTY LOCAL VARIABLES                      #
@@ -6219,6 +6349,7 @@ while (<INPUTFILE>) {
           # apply_builtin_exceptions() as lowercase placeholders.
           my ( $builtin_out, $builtin_ortho ) = builtin_bypass($word);
           if ( defined $builtin_out ) {
+               next if $builtin_out eq '';
                push @output_words, $builtin_out;
                push @output_ortho,  $builtin_ortho;
                next;
@@ -6718,6 +6849,7 @@ while (<OUTPUTFILE>) {
      else {
           $input_line = lc($input_line);
      }
+     $input_line = vowel_place_letters($input_line);
 
      ############################################################################
      #                   PROCESS SYLLABLE DOTS, IF DESIRED                      #
@@ -7423,13 +7555,14 @@ sub print_usage {
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -p";
           print STDOUT "\n";
-          print STDOUT "\nSALIDA:       -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.";
-          print STDOUT "\n              D-.ˈA-A.V-.ˈB-.A-A.D-.ˈA-.P- ‖ V-.ˈT-P";
+          print STDOUT "\nSALIDA:       fA.VbA.AfB.ˈAPbA | Af.ˈDAc.Dc.Df.c.VWcA.ˈDcA.Ac.ˈPb.BPc.Db.ˈAcA.";
+          print STDOUT "\n              Df.ˈAfA.Vb.ˈBf.AfA.Df.ˈAc.Pb ‖ Vc.ˈTcP";
           print STDOUT "\n";
           print STDOUT "\nDESCRIPCIÓN:  Puntos de articulación: B = bilabial, L = labiodental,";
           print STDOUT "\n              D = dental, A = alveolar, T = postalveolar, P = palatal,";
-          print STDOUT "\n              V = velar, W = labiovelar, - = vocal. \"tr\" es DA (dental y";
-          print STDOUT "\n              alveolar); con -tg, A.";
+          print STDOUT "\n              V = velar, W = labiovelar, G = glotal (la h de hmm); vocales en";
+          print STDOUT "\n              minúscula: f = anterior (i, e), c = central (a), b = posterior";
+          print STDOUT "\n              (o, u). \"tr\" es DA (dental y alveolar); con -tg, A.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMANDO:      $progname -i=fuente.txt -voicing";
           print STDOUT "\n";
@@ -7721,13 +7854,14 @@ sub print_usage {
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -p";
           print STDOUT "\n";
-          print STDOUT "\nOUTPUT:       -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.";
-          print STDOUT "\n              D-.ˈA-A.V-.ˈB-.A-A.D-.ˈA-.P- ‖ V-.ˈT-P";
+          print STDOUT "\nOUTPUT:       fA.VbA.AfB.ˈAPbA | Af.ˈDAc.Dc.Df.c.VWcA.ˈDcA.Ac.ˈPb.BPc.Db.ˈAcA.";
+          print STDOUT "\n              Df.ˈAfA.Vb.ˈBf.AfA.Df.ˈAc.Pb ‖ Vc.ˈTcP";
           print STDOUT "\n";
           print STDOUT "\nDESCRIPTION:  Places of articulation: B = bilabial, L = labiodental,";
           print STDOUT "\n              D = dental, A = alveolar, T = postalveolar, P = palatal,";
-          print STDOUT "\n              V = velar, W = labiovelar, - = vowel. \"tr\" is DA (dental and";
-          print STDOUT "\n              alveolar); with -tg, A.";
+          print STDOUT "\n              V = velar, W = labiovelar, G = glottal (the h of hmm); vowels in";
+          print STDOUT "\n              lower case: f = front (i, e), c = central (a), b = back (o, u).";
+          print STDOUT "\n              \"tr\" is DA (dental and alveolar); with -tg, A.";
           print STDOUT "\n-------------------------------------------------------------------------------";
           print STDOUT "\nCOMMAND:      $progname -i=source.txt -voicing";
           print STDOUT "\n";
@@ -12056,16 +12190,16 @@ sub normalize_structured_tokens {
      # --tokens a full stop is a token of its own, so one left on a number
      # token (2.) is still only deleted.
      # A dot followed by a digit belongs to the number.
-     $current_item =~ s{\b(\d+)\.{2,}(?!\d)}{
+     $current_item =~ s{(?<!\d[.,])\b(\d+)\.{2,}(?!\d)}{
           my $n=int($1); my $nw=eval{$conv->cardinal($n)}//$1; "$nw..."
      }ge;
-     $current_item =~ s{\b(\d+)\.(?![\d.ºª°])}{
+     $current_item =~ s{(?<!\d[.,])\b(\d+)\.(?![\d.ºª°])}{
           my $n=int($1); ( eval{$conv->cardinal($n)}//$1 ) . ( $token_mode == 1 ? '' : '.' )
      }ge;
      # A comma after a number: the short pause, as after a word ("12, 13").
      {
           my $comma_to = ( $add_comma_pauses == 1 ) ? ' qqshortpauseqq' : '';
-          $current_item =~ s{\b(\d+),(?!\d)}{
+          $current_item =~ s{(?<!\d[.,])\b(\d+),(?!\d)}{
                my $n=int($1); ( eval{$conv->cardinal($n)}//$1 ) . $comma_to
           }ge;
      }
@@ -12712,7 +12846,18 @@ sub fix_odd_characters {
           $current_item =~ s/ë/e/g;
           $current_item =~ s/ï/i/g;
           $current_item =~ s/ö/o/g;
+          # ü is u but in güe and güi, the Spanish diaeresis (decided
+          # 261112: Mapudungun and German ü alike).
+          $current_item =~ s/(?<![gG])ü/u/g;
+          $current_item =~ s/ü(?![eiéíEIÉÍ])/u/g;
+          $current_item =~ s/(?<![gG])Ü/U/g;
+          $current_item =~ s/Ü(?![eiéíEIÉÍ])/U/g;
      }
+
+     # A Mapudungun ng at the start of a word, before a vowel, is g, and gu
+     # before e and i (decided 261112). No Spanish word begins with ng.
+     $current_item =~ s/(?<![\p{L}\p{M}\p{N}'’_-])([nN])([gG])(?=[eiéíEIÉÍ])/($1 eq 'N' ? 'G' : 'g') . 'u'/ge;
+     $current_item =~ s/(?<![\p{L}\p{M}\p{N}'’_-])[nN]([gG])(?=[aouáóúAOUÁÓÚ])(?!uyen)/$1/g;
 
      # GRAVE ACCENTS > ACUTE ACCENTS (USING GRAVES IS A PRETTY COMMON TYPING MISTAKE)
      if ( $fix_grave_accents == 1 ) {
@@ -12720,7 +12865,7 @@ sub fix_odd_characters {
           $current_item =~ s/è/é/g;
           $current_item =~ s/ì/í/g;
           $current_item =~ s/ò/ó/g;
-          $current_item =~ s/ò/ú/g;
+          $current_item =~ s/ù/ú/g;
      }
 
           # CIRCUMFLEXES > BARE VOWELS
@@ -15195,6 +15340,7 @@ sub opt_convert_phonemes_cv {
 
      $current_item =~ s/$vowels_glides/V/g;
      $current_item =~ s/$all_consonants/C/g;
+     $current_item =~ s/[hʃʦ]/C/g;    # the h of hmm, the ʃ of sh, the ʦ of tsunami; not in $all_consonants, which the syllabification reads
      $current_item =~ s/̪̠͡//g;
      return ($current_item);
 
@@ -15217,6 +15363,7 @@ sub opt_convert_phonemes_cvg {
      $current_item =~ s/$glides/G/g;
      $current_item =~ s/$all_vowels/V/g;
      $current_item =~ s/$all_consonants/C/g;
+     $current_item =~ s/[hʃʦ]/C/g;    # the h of hmm, the ʃ of sh, the ʦ of tsunami; not in $all_consonants, which the syllabification reads
      $current_item =~ s/̪̠͡//g;
 
      return ($current_item);
@@ -15243,6 +15390,7 @@ sub opt_convert_phonemes_cvnlrg {
      $current_item =~ s/$rhotics/R/g;
      $current_item =~ s/$all_vowels/V/g;
      $current_item =~ s/$all_consonants/C/g;
+     $current_item =~ s/[hʃʦ]/C/g;    # the h of hmm, the ʃ of sh, the ʦ of tsunami; not in $all_consonants, which the syllabification reads
      $current_item =~ s/̪̠͡//g;
      return ($current_item);
 
@@ -15304,12 +15452,29 @@ sub opt_convert_phonemes_places {
      $current_item =~ s/$palatals/P/g;
      $current_item =~ s/$velars/V/g;
      $current_item =~ s/$labiovelars/W/g;
-     # A vowel has no place of articulation in this scheme. It was once V,
-     # the same letter as a velar consonant.
-     $current_item =~ s/$all_vowels/-/g;
+     $current_item =~ s/$glottals/G/g;
+     # Vowels by their place on the front-back axis, in lower case so that
+     # they never look like a consonant's place: f front (i, e), c central
+     # (a), b back (o, u). The output of this mode is upper-cased after this
+     # point, so private-use marks stand in for the three letters until
+     # vowel_place_letters() writes them.
+     $current_item =~ s/$front_vowels/\x{E0F0}/g;
+     $current_item =~ s/$central_vowels/\x{E0F1}/g;
+     $current_item =~ s/$back_vowels/\x{E0F2}/g;
      $current_item =~ s/̪̠͡//g;
 
      return ($current_item);
+}
+
+############################################################################
+# SUBROUTINE: THE VOWEL PLACE LETTERS, AFTER THE CASE IS SET               #
+############################################################################
+# opt_convert_phonemes_places() writes a vowel as a private-use mark, which
+# no change of case touches; this turns the marks into f, c and b.
+sub vowel_place_letters {
+     my $s = $_[0];
+     $s =~ tr/\x{E0F0}\x{E0F1}\x{E0F2}/fcb/;
+     return $s;
 }
 
 ############################################################################
@@ -15704,6 +15869,82 @@ sub acronym_is_pronounceable {
      return ( $w =~ /^(?:$on$nu$co)+$/ ) ? 1 : 0;
 }
 
+# The interjections read by their shape, in any case: the key of their
+# reading in %BUILTIN_IPA, or undef. mm is left to its ordinary reading (m̩ː).
+sub interjection_key {
+     my $w = shift;
+     return undef unless defined $w && $w ne '';
+     return 'mmm'  if $w =~ /^m{3,}$/i;
+     return 'hmm'  if $w =~ /^h+m+$/i;
+     return 'mmhm' if $w =~ /^m+-?[hj]+m+$/i;
+     return 'sh'   if $w =~ /^s+h+$/i;
+     return undef;
+}
+
+# A false start: a token without a vowel that comes right before an ellipsis
+# is a word cut off, read as its sounds. Returns its phonemes in the internal
+# symbols (ʧ, ʤ, ʂ, t, d), or undef when the token is not one: a token with
+# a vowel, two or more capitals (an acronym), an interjection, or anything
+# but Spanish consonant letters.
+sub false_start_phonemes {
+     my $w = shift;
+     return undef unless defined $w && $w =~ /^\p{L}+$/;
+     return undef if $w =~ /[aeiouyáéíóúàèìòùäëïöü]/i;
+     return undef if length($w) >= 2 && $w eq uc($w);
+     my $l = lc $w;
+     return undef if $l =~ /[^bcdfghjklmnñpqrstvwxz]/;
+     return undef if $HELD_INTERJECTIONS{$l} || defined interjection_key($l);
+     my @out;
+     my $prev = '';
+     while ( $l ne '' ) {
+          my $p;
+          if    ( $l =~ s/^ch// ) { $p = 'ʧ' }
+          elsif ( $l =~ s/^ll// ) { $p = 'ʤ' }
+          elsif ( $l =~ s/^rr// ) { $p = 'r' }
+          elsif ( $l =~ s/^tr// ) { $p = 'ʂ' }
+          elsif ( $l =~ s/^r// )  { $p = ( $prev eq '' || $prev =~ /^[lns]$/ ) ? 'r' : 'ɾ' }
+          else {
+               $l =~ s/^(.)//;
+               $p = $FALSE_START_SOUND{$1};
+          }
+          push @out, $p;
+          $prev = $p;
+     }
+     return join( '', @out );
+}
+
+# The placeholder of a false start, which survives the line-level pipeline
+# and is resolved by builtin_bypass(); undef when the token is not one.
+sub false_start_placeholder {
+     my $w   = shift;
+     my $ipa = false_start_phonemes($w);
+     return undef unless defined $ipa;
+     my $key = lc($w) . "\t" . $ipa;
+     unless ( exists $FALSE_START_INDEX{$key} ) {
+          push @FALSE_START_IPA, [ $ipa, lc $w ];
+          $FALSE_START_INDEX{$key} = $#FALSE_START_IPA;
+     }
+     my $id = $FALSE_START_INDEX{$key};
+     return 'qqfs' . join( '', map { chr( ord('a') + $_ ) } split //, $id ) . 'qq';
+}
+
+# A false start's phonemes in the symbols the run asked for, as
+# transcribe_word() writes them.
+sub finish_false_start {
+     my $s = shift;
+     $s =~ s/ʤ/ʝ/g if $ye_phoneme_is_fricative == 1;
+     $s =~ s/ʧ/CHE_PLACEHOLDER/g             if $ch_is_single_char == 1;
+     $s =~ s/ʧ/TEE_PLACEHOLDER̠͡ʃ/g          if $ch_is_retracted_with_ligature == 1;
+     $s =~ s/ʧ/TEE_PLACEHOLDER̠ʃ/g           if $ch_is_retracted_no_ligature == 1;
+     $s =~ s/ʧ/TEE_PLACEHOLDER͡ʃ/g           if $ch_not_retracted_with_ligature == 1;
+     $s =~ s/ʧ/TEE_PLACEHOLDERʃ/g            if $ch_not_retracted_no_ligature == 1;
+     $s = opt_use_multichars($s) if $multichars == 1;
+     $s =~ s/CHE_PLACEHOLDER/ʧ/g;
+     $s =~ s/TEE_PLACEHOLDER/t/g;
+     $s = opt_phoneme_transforms($s);
+     return $s;
+}
+
 # Replace whole tokens by their built-in reading before any other processing.
 # Stand-ins and IPA entries become lowercase placeholders that survive the
 # line-level pipeline untouched and are resolved by builtin_bypass().
@@ -15714,6 +15955,10 @@ sub apply_builtin_exceptions {
           my ( $re, $resp ) = @$ph;
           $line =~ s/(?<![\w'’])['’]?$re(?![\w])/$resp/g;
      }
+     # A false start: a word without a vowel right before an ellipsis.
+     $line =~ s{(?<![\p{L}\p{M}\p{N}'’_-])(\p{L}+)(?=\s*(?:\.{2,}|…))}{
+          false_start_placeholder($1) // $1
+     }ge;
      my @parts = split /(\s+)/, $line;
      foreach my $p (@parts) {
           next if $p eq '' || $p =~ /^\s+$/;
@@ -15743,8 +15988,11 @@ sub apply_builtin_exceptions {
                $p = $pre . $BUILTIN_RESPELL{$core} . $post;
                next;
           }
-          elsif ( exists $BUILTIN_IPA{$core} || exists $BUILTIN_IPA{ lc $core } ) {
-               my $k  = exists $BUILTIN_IPA{$core} ? $core : lc $core;
+          elsif ( exists $BUILTIN_IPA{$core} || exists $BUILTIN_IPA{ lc $core }
+                  || defined interjection_key($core) ) {
+               my $k  = exists $BUILTIN_IPA{$core} ? $core
+                      : exists $BUILTIN_IPA{ lc $core } ? lc $core
+                      : interjection_key($core);
                my $id = $BUILTIN_IPA_INDEX{$k};
                $mid = 'qqipa' . join( '', map { chr( ord('a') + $_ ) } split //, $id ) . 'qq';
           }
@@ -15785,6 +16033,13 @@ sub builtin_bypass {
           return ( undef, undef ) unless defined $k;
           return ( finalize_builtin_ipa( $BUILTIN_IPA{$k} ), $k );
      }
+     # A false start: its sounds, or nothing for a lone h.
+     if ( $w =~ /^qqfs([a-j]+)qq$/ ) {
+          my $id = join( '', map { ord($_) - ord('a') } split //, $1 );
+          my $e  = $FALSE_START_IPA[$id];
+          return ( undef, undef ) unless defined $e;
+          return ( finish_false_start( $e->[0] ), $e->[1] );
+     }
      return ( undef, undef );
 }
 
@@ -15793,9 +16048,22 @@ sub builtin_bypass {
 # everything else by finalize_phon_string() or by Stage 2.)
 sub finalize_builtin_ipa {
      my $s = shift;
+     # ch and ts as every other ch in the run: ʧ and ʦ stay single
+     # characters only where the run uses them (the category modes).
+     if ( $multichars == 1 ) {
+          my $lig = ( $use_ligatures == 1 ) ? "\x{0361}" : '';
+          if ( $use_one_char_ch_symbol == 0 ) {
+               my $ret = ( $ch_dzh_retracted == 1 ) ? "\x{0320}" : '';
+               $s =~ s/ʧ/t$ret$lig\x{0283}/g;
+          }
+          $s =~ s/ʦ/t${lig}s/g;
+     }
      if ( $stress_using_tildes == 1 ) {
           my %acute = ( a => 'á', e => 'é', i => 'í', o => 'ó', u => 'ú' );
           $s =~ s/ˈ([^.aeiou]*)([aeiou])/$1$acute{$2}/g;
+          # A stressed syllable without a vowel: the accent goes on its
+          # syllabic consonant (mmhm m̩.hḿ̩).
+          $s =~ s/ˈ([^.aeiou\x{0329}]*?)(\p{L})\x{0329}/$1$2\x{0301}\x{0329}/g;
      }
      if ( $no_stress_marks == 1 ) {
           $s =~ s/[ˈˌ]//g;
@@ -15823,6 +16091,7 @@ sub finalize_phon_string {
      elsif ( $output_place == 1 )  { $s = opt_convert_phonemes_places($s); }
      elsif ( $voicing == 1 )       { $s = opt_convert_phonemes_voicing($s); }
      $s = ( $upper_case == 1 ) ? uc($s) : lc($s);
+     $s = vowel_place_letters($s);
      if ( $syllable_dots_are_spaces == 1 && !$no_dot_spaces ) {
           $s =~ s/\./ /g;
      }
@@ -15922,6 +16191,13 @@ sub transcribe_token_line {
                my $plain = cardinal_plain($int);
                $tokens[$i] = $w if !defined $plain || $w ne $plain;
           }
+     }
+     # A false start: a token without a vowel before an ellipsis token.
+     for ( my $i = 0 ; $i < $#tokens ; $i++ ) {
+          next unless $tokens[ $i + 1 ] =~ /^\s*(?:\.{2,}|…+)\s*$/;
+          ( my $core = $tokens[$i] ) =~ s/^\s+|\s+$//g;
+          my $ph = false_start_placeholder($core);
+          $tokens[$i] = $ph if defined $ph;
      }
      my @groups = map { [ token_to_phoneme_words($_) ] } @tokens;
      my @flat   = map { @$_ } @groups;
@@ -16042,8 +16318,10 @@ sub narrow_transcription {
 
      # 4. Onset after any other consonant: fricatives, except after a nasal
      #    (and d after l), where the stop stays. A pause blocks the rule,
-     #    because | and ‖ are not part of $SEP.
-     $s =~ s{((?![. ˈˌ'\x01|‖])\X)($SEP)(d̪|d|b|ɡ)}{ _narrow_after_consonant($1, $2, $3) }ge;
+     #    because | and ‖ are not part of $SEP. A length mark belongs to the
+     #    segment before it, so the syllabic nasal of mm (m̩ː) is a nasal
+     #    here: mm bueno m̩ː ˈbwẽ.nõ, as after m in hombre.
+     $s =~ s{((?![. ˈˌ'\x01|‖])\Xː?)($SEP)(d̪|d|b|ɡ)}{ _narrow_after_consonant($1, $2, $3) }ge;
 
      # ---- 8. Yeismo: ɟʝ -> dʒ utterance-initially, ʝ everywhere else.
      #         "Utterance-initial" = start of string, or right after a

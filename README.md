@@ -1,6 +1,6 @@
 # Perkins
 
-![version](https://img.shields.io/badge/version-2.0.38-1f6feb?style=flat-square)
+![version](https://img.shields.io/badge/version-2.0.41-1f6feb?style=flat-square)
 ![licence](https://img.shields.io/badge/licence-AGPL--3.0-2da44e?style=flat-square)
 ![platforms](https://img.shields.io/badge/runs%20on-Linux%20%7C%20Windows%20%7C%20macOS-8250df?style=flat-square)
 ![processors](https://img.shields.io/badge/processors-x86--64%20%7C%20ARM64-0969da?style=flat-square)
@@ -11,7 +11,7 @@ Perkins turns Spanish orthographic text into phonemic or semi-narrow transcripti
 
 Author: Scott Sadowsky (http://sadowsky.cl). Licence: GNU Affero General Public License, version 3 (`LICENSE.md`).
 
-Every example on this page was produced by Perkins 2.0.38 itself.
+Every example on this page was produced by Perkins 2.0.41 itself.
 
 This is essentially an entirely new program with regard to Perkins 1.0.x. Binaries for Linux, Windows and macOS on Intel and ARM processors, and .deb, .rpm and Arch Linux packages are all built and tested by GitHub. The source code is the original Perl script.
 
@@ -35,15 +35,15 @@ This is essentially an entirely new program with regard to Perkins 1.0.x. Binari
 
 ## Download and installation
 
-Ready-built binaries and Linux packages are attached to each release on the [Releases page](https://github.com/Linguista/Perkins/releases). None of them needs Perl. For version 2.0.38:
+Ready-built binaries and Linux packages are attached to each release on the [Releases page](https://github.com/Linguista/Perkins/releases). None of them needs Perl. For version 2.0.41:
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.38-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.38-1_amd64.deb` |
-| `perkins-2.0.38-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.38-1.x86_64.rpm` |
-| `perkins-2.0.38-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.38-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.38-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.38-1_arm64.deb` |
-| `perkins-2.0.38-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.38-1.aarch64.rpm` |
+| `perkins_2.0.41-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.41-1_amd64.deb` |
+| `perkins-2.0.41-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.41-1.x86_64.rpm` |
+| `perkins-2.0.41-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.41-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.41-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.41-1_arm64.deb` |
+| `perkins-2.0.41-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.41-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | see below |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | see below |
 | `perkins-windows-x86_64.exe` | Windows (also Windows on ARM, which runs it through its emulation) | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -169,6 +169,8 @@ The cluster tr can be treated as one phoneme, as many Chilean speakers pronounce
 
 A comma or a parenthesis is the short pause |. A full stop, question mark, exclamation mark, colon, semicolon, ellipsis or dash is the long pause ‖, after a word or a number. The period of an abbreviation is not: Sr. Pérez is se.ˈɲoɾ.ˈpe.ɾes.
 
+A word without a vowel right before an ellipsis is a false start, a word cut off, and is read as its sounds: no s ... no logró is no s ‖ no lo.ˈɡɾo, not no ˈe.se. An acronym in capitals and an interjection (mmm ..., sh ...) keep their reading.
+
 Text in square brackets is a transcription marker, not speech: Mira [risas] eso gives `ˈmi.ɾa.???.ˈe.so`. `--marker-symbol=X` writes X instead of ???, and `--no-markers` reads the text in the brackets.
 
 | Option | Effect |
@@ -196,7 +198,7 @@ Each segment can be replaced by its category. Stress marks and syllables are kep
 | `-cvg` | C consonant, V vowel, G glide |
 | `-cvn` | C consonant, V vowel, G glide, N nasal, L liquid, R rhotic |
 | `-f=MANNER`, `-man` | P plosive, N nasal, R trill, T tap, F fricative, L lateral, A affricate, X approximant, V vowel |
-| `-f=PLACE`, `-pl` | B bilabial, L labiodental, D dental, A alveolar, T postalveolar, P palatal, V velar, W labiovelar, - vowel |
+| `-f=PLACE`, `-pl` | B bilabial, L labiodental, D dental, A alveolar, T postalveolar, P palatal, V velar, W labiovelar, G glottal (the h of hmm); vowels in lower case: f front (i, e), c central (a), b back (o, u) |
 | `-f=V`, `-voicing` | S voiced (vowels included), A voiceless |
 
 ```diff
@@ -207,7 +209,7 @@ Each segment can be replaced by its category. Stress marks and syllables are kep
 @@ perkins -nocfg -i=source.txt -f=MANNER @@
 + VN.PVN.FVP.ˈFXVN | FV.ˈPTV.PV.PV.V.PXVN.ˈPVT.LV.ˈFV.PXV.PV.ˈTVN.PV.ˈFVN.PV.ˈNV.FVF.PV.ˈLV.NV ‖ PV.ˈAVX
 @@ perkins -nocfg -i=source.txt -f=PLACE @@
-+ -A.V-A.A-B.ˈAP-A | A-.ˈDA-.D-.D-.-.VW-A.ˈD-A.A-.ˈP-.BP-.D-.ˈA-A.D-.ˈA-A.V-.ˈB-.A-A.D-.ˈA-.P- ‖ V-.ˈT-P
++ fA.VbA.AfB.ˈAPbA | Af.ˈDAc.Dc.Df.c.VWcA.ˈDcA.Ac.ˈPb.BPc.Db.ˈAcA.Df.ˈAfA.Vb.ˈBf.AfA.Df.ˈAc.Pb ‖ Vc.ˈTcP
 @@ perkins -nocfg -i=source.txt -f=V @@
 + SS.ASS.ASA.ˈASSS | AS.ˈASS.AS.SS.S.SSSS.ˈASS.SS.ˈSS.SSS.SS.ˈSSS.AS.ˈASS.AS.ˈSS.ASA.SS.ˈSS.SS ‖ AS.ˈASS
 ```
@@ -494,7 +496,7 @@ When a release is published here, GitHub builds the five binaries and tests each
 ## Known problems
 
 > [!WARNING]
-> These are known and not yet fixed in 2.0.38:
+> These are known and not yet fixed in 2.0.41:
 >
 > - A single letter with a period is read as the letter's name, before anything else: p. m. and a. m. are pe eme and a eme, and i. e. is i e. EE. UU. is e ‖ u u.
 > - The period of an abbreviation is never a sentence end, even when it ends one: Vino el Sr. Luego se fue has no pause after se.ˈɲoɾ.

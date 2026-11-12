@@ -1,6 +1,6 @@
 # perkins_README.md
 
-Documents Perkins 2.0.38, the Spanish phonological transcriber (Scott Sadowsky, GNU AGPL v3).
+Documents Perkins 2.0.41, the Spanish phonological transcriber (Scott Sadowsky, GNU AGPL v3).
 
 The source, the binaries for Linux, Windows and macOS and the Linux packages are at https://github.com/Linguista/Perkins, whose main page also shows every option with examples.
 
@@ -66,7 +66,7 @@ Perkins carries its special readings in the program itself, in four tables appli
 | Table | Matched | Holds |
 |---|---|---|
 | `%BUILTIN_RESPELL` | exact case | acronyms and codes read as letters (PDI as pedeí, B-32 as betreintaidós) and other overrides, from the COSCACH inventory |
-| `%BUILTIN_IPA` | exact case, then lowercase | fixed phonemic transcriptions: backchannels and fillers (mmhm as m̩.ˈhm̩, mmm as m̩ː, nn as n̩ː), and three names: aylwin ˈejl.win, revenge re.ˈbenʝ, selj selʝ |
+| `%BUILTIN_IPA` | exact case, then lowercase | fixed phonemic transcriptions: backchannels and fillers (mmhm as m̩.ˈhm̩, mmm as m̩ː, nn as n̩ː), four of them also by their shape (see below), and three names: aylwin ˈejl.win, revenge re.ˈbenʝ, selj selʝ |
 | `%BUILTIN_RESPELL_ANYCASE` | lowercase, after the two above | 2,655 respellings of the COSCACH spelling review |
 | `@BUILTIN_PHRASES` | a pattern, without regard to case | multiword names read as one Spanish word |
 
@@ -74,10 +74,12 @@ A respelling is an ordinary Spanish spelling that Perkins then transcribes: a wr
 
 How the tables meet:
 
-- The exact-case table is looked up first, so a word in capitals that is another word keeps its own reading: AND is aenedé while and is an, UP is upé while up is ap, WoW (the game) is wow while wow is waw, RR is erreérre while rr stays the backchannel r̩.
+- The exact-case table is looked up first, so a word in capitals that is another word keeps its own reading: AND is aenedé while and is an, UP is upé while up is ap, WoW (the game) is wow while wow is waw, RR is erreérre while rr stays the backchannel r̩ (before an ellipsis it is a false start, r; see below).
 - Letters respelled as separate letter names are joined, with the stress on the last letter, as an acronym is said: psu (pe ese u) is peeseú, pe.e.se.ˈu. A space stays where two vowels would make a diphthong (u ese bé) or three identical vowels would meet.
 - An entry that ends in a period (J., Dr., C.C.U.) is looked up with its period, before anything else, so Dr. is doctor, while Dr without the period stays the backchannel dɾ̩.
-- mm is deliberately absent everywhere: filler or millimetres is a judgement call, so it keeps Perkins' ordinary handling.
+- mm is deliberately absent everywhere: filler or millimetres is a judgement call, so it keeps Perkins' ordinary handling (which reads it m̩ː).
+- Four interjections are also read by their shape, in any case, whatever the spelling: every run of three or more m (mmm, mmmmm, mmmmmmm) is m̩ː; h then m (hm, Hm, hmmm) hm̩ː; m then h or j then m (mhm, mhmm, mmhmm, mmmhm, mjm, mm-hm) m̩.ˈhm̩; s then h (sh, shh, shhh, ssh, SH) ʃ̩ː, with F, T and A in manner, place and voicing.
+- With the stress written as an accent (`-st`, `-csc`), a stressed syllable without a vowel takes the accent on its syllabic consonant: mmhm is m̩ hḿ̩ with `-csc`.
 
 The phrase table:
 
@@ -99,6 +101,7 @@ Other fixed behaviour:
 
 - XXXREDACTEDXXX and XXXNUMXXX become the long pause ‖ (|| with `-lp2`); XXXUNINTELLIGIBLEXXX becomes the short pause |.
 - An all-capitals token that can be pronounced as a Spanish word is read as a word (INACAP); one that cannot is spelled (PDI).
+- A false start, a token without a vowel right before an ellipsis, in running text or as the token before an ellipsis token, is a word cut off and is read as its sounds: "no s ... no logró" is no s ‖ no lo.ˈɡɾo, "de ch ..." d̪e t͡ʃ ‖, pr ... pɾ, cl... kl. c and q are k, g ɡ, j x, v b, z s, x ks, ll ʝ, h nothing; r is the trill at the start and after l, n or s, the tap after another consonant. Not a false start: two or more capitals (PS ... and LGB ... stay spelled) and the interjections, which keep their reading before an ellipsis (mmm ..., nn ..., sh ..., pf ...). Without an ellipsis after it, a lone letter is still its name (la s is la ˈe.se).
 - The underscore separates words; it is read aloud only inside URLs and e-mail addresses.
 - A written uno is never cut to un (uno nunca sabe, me quedé con uno solo). Only a number written in digits is: before a unit or a currency (1 km un kilómetro, $1 un peso) and before a masculine noun, with which it agrees (1 perro un perro; see Numbers).
 - The -uir verbs keep u and i apart with the stress on i (huir u.ˈiɾ, construir kons.tɾu.ˈiɾ, incluido in.klu.ˈi.do); every other ui is a diphthong (buitre ˈbwi.tɾe, Luis lwis, intuición in.twi.ˈsjon, huincha ˈwin.ʧa).
@@ -110,11 +113,11 @@ Ready-built binaries and packages are attached to each release on the Releases p
 
 | File | For | Install with |
 |---|---|---|
-| `perkins_2.0.38-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.38-1_amd64.deb` |
-| `perkins-2.0.38-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.38-1.x86_64.rpm` |
-| `perkins-2.0.38-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.38-1-x86_64.pkg.tar.zst` |
-| `perkins_2.0.38-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.38-1_arm64.deb` |
-| `perkins-2.0.38-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.38-1.aarch64.rpm` |
+| `perkins_2.0.41-1_amd64.deb` | Debian, Ubuntu and their derivatives | `sudo apt install ./perkins_2.0.41-1_amd64.deb` |
+| `perkins-2.0.41-1.x86_64.rpm` | Fedora | `sudo dnf install ./perkins-2.0.41-1.x86_64.rpm` |
+| `perkins-2.0.41-1-x86_64.pkg.tar.zst` | Arch Linux | `sudo pacman -U perkins-2.0.41-1-x86_64.pkg.tar.zst` |
+| `perkins_2.0.41-1_arm64.deb` | Debian, Ubuntu and Raspberry Pi OS on ARM processors (64-bit) | `sudo apt install ./perkins_2.0.41-1_arm64.deb` |
+| `perkins-2.0.41-1.aarch64.rpm` | Fedora on ARM processors | `sudo dnf install ./perkins-2.0.41-1.aarch64.rpm` |
 | `perkins-linux-x86_64` | any other Linux on Intel or AMD processors | as described below the table |
 | `perkins-linux-arm64` | any other Linux on ARM processors (64-bit) | as described below the table |
 | `perkins-windows-x86_64.exe` | Windows (also Windows on ARM, which runs it through its emulation) | rename it `perkins.exe` and put it in a folder on the PATH |
@@ -130,11 +133,11 @@ pp -M Roman -M Lingua::ES::Numeros -o perkins perkins.pl
 ./perkins -h 2>&1 | grep -m1 'Perkins v'
 ```
 
-It must print `Perkins v2.0.38`.
+It must print `Perkins v2.0.41`.
 
 ## Checking a build
 
-`tests/` holds the test sentence approved on 261030 with its expected phonemic and narrow output, a token file with its expected output for each of the seven CoNLL columns, the phrase readings, an ellipsis token, and the cases of commas, uno, diphthongs, ui, the any-case table, the colon and the full stop after a number as long pauses, NFC output, the word and syllable lists, abbreviations, and `-noelp` and `-nosnp`. In the folder holding `tests/`, check the binary on the PATH:
+`tests/` holds the test sentence approved on 261030 with its expected phonemic and narrow output, a token file with its expected output for each of the seven CoNLL columns, the phrase readings, an ellipsis token, and the cases of commas, uno, diphthongs, ui, the any-case table, the colon and the full stop after a number as long pauses, NFC output, the word and syllable lists, abbreviations, `-noelp` and `-nosnp`, the syllabic nasal of mm and hmm in narrow transcription and in the manner, place and voicing categories, decimals and thousands before a full stop or a comma, the interjections by their shape, and false starts. In the folder holding `tests/`, check the binary on the PATH:
 
 ```bash
 bash tests/run-test.sh
@@ -161,6 +164,9 @@ It prints ok or FAIL for each test, with the differences, and ALL TESTS PASSED a
 
 ## Version history
 
+- **2.0.41** (2026-11-12): ts is the affricate t͡s, one phoneme (tsunami t͡su.ˈna.mi; it was t̪.su.ˈna.mi), with its categories in every mode (ʦ in the single-character modes, ts with `-csc`); ü is u everywhere but in güe and güi (küni ˈku.ni, kütral ku.ˈt̪ɾal; they were k.wni, k.wt̪ɾal); a Mapudungun ng at the start of a word, before a vowel, is g, gu before e and i (ngenechén ɡe.ne.ˈt͡ʃen, nguillatún ɡi.ʝa.ˈt̪un), and ng inside a word is never touched; new built-in readings (Bryan ˈbɾa.ʝan, Ryan ˈra.ʝan, Schlyer ˈt͡ʃlaj.eɾ, Django ˈʝan.ɡo, nocauts no.ˈkawts, APK a.pe.ˈka, CPU se.pe.ˈu, glüh, nürr, pürrüm and eight Mapudungun words); grr is ɡr̩ː (long), brr br̩ː, brbrbr br̩.br̩.br̩, and brr and brbrbr keep their reading before an ellipsis; the ch of a built-in reading (fch, tsh, pch) is written as every other ch (t͡ʃ, tʃ with `-csc`; it was always ʧ); a grave ù is fixed to ú. 65 tests.
+- **2.0.40** (2026-11-11): a false start (a token without a vowel right before an ellipsis) is read as its sounds: s ... is s, pr ... pɾ, ch ... t͡ʃ (it was read as letter names: s ˈe.se, pr pe.ˈe.re, cl se ˈe.le); mmm, hmm, mmhm and sh are recognized by their shape in any spelling and case (mmmmm was mmm, hmmm mm, mhm mm, mjm mxm, shh t͡ʃ, SH the letters); ʃ (sh, ch) has its categories, F, T and A (it was written Ʃ); with an accent for stress, the stressed syllabic m of mmhm takes the accent (m̩ hḿ̩; it kept ˈ).
+- **2.0.39** (2026-11-11): `-f=PLACE` writes a vowel by its place, in lower case: f front (i, e), c central (a), b back (o, u) (it was -); with `--narrow`, b, d and ɡ keep their stop after the syllabic nasal of mm, mmm and hmm (mm bueno m̩ː ˈbwẽ.nõ; they were lenited); the h of hmm and mmhm is F in manner, G (glottal) in place, A in voicing and C in the CV categories (it was written as H); in running text a decimal or a number with thousands separators before a full stop or a comma is read whole (3,5. gave an internal placeholder, 3,5, lost its coma, 1.500. was uno quinientos, 2.000, dos cero).
 - **2.0.38** (2026-11-11): `-owl`, `-sas` and the new `-osl` and `-usl` write one word or syllable per line, without pauses (they wrote one line, words run together); syllable lists cut from running text or, with `-nosbu`, from each word; `-vrt` is a word list with its own settings, through the ordinary pipeline (its old pipeline for Connexor VRT files gave kon.sep.si.ón), and an input ending in .vrt no longer selects it; every input line keeps its own output line (with `-noppp` they were glued together); `-noelp` and `-nosnp` work; the period of an abbreviation is not a sentence end (Sr. Pérez was esr ‖ ˈpe.ɾes); `-f=PLACE` writes a vowel as -, not V; `-phonword` keeps capital letters and writes no line for a full stop; the output file may not be the input file; `perkins -u` shows real output, with the voicing key corrected (S voiced, A voiceless).
 - **2.0.37** (2026-11-10): no change in output. Comments and documents no longer name files, folders and projects that are not part of Perkins; the help banner names the licence file as `LICENSE.md`; every option with real examples on the main page of the repository (`README.md`); binaries for Linux and macOS on both Intel and ARM processors, and `.deb` and `.rpm` packages for ARM; the GitHub build checks the repository for private information before building.
 - **2.0.36** (2026-11-10): no change in output. Comments and documents reworded, version numbers taken out of the comments outside the changelog, the error for the old -g2p option no longer names a version; the source published at https://github.com/Linguista/Perkins, where GitHub builds and tests binaries for Linux, Windows and macOS; the tests ignore line endings, so they also run on Windows.

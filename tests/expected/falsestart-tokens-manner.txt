@@ -1,0 +1,8 @@
+ˈPV.TV	NV	F	‖	NV	LV.ˈPTV
+PV	A	‖	LVF	ˈFV.PV.NVF
+FV	PV	P	‖	ˈPXVN.PV	ˈV.NV
+PT	‖	PTV.ˈPVN.PV	V	PL	‖	ˈPLV.TV
+	‖	VX	R	‖	F	‖	ˈFXV.PV
+N̩ː	‖	N̩ː	‖	F̩ː	‖	FV
+VL	PV.ˈV.FV	‖	V	LV	V.LV.FV.ˈPV	‖
+LV	ˈV.FV	V	LV	AF̩ː
